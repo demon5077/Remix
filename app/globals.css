@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3%;
+    --foreground: 240 20% 95%;
+    --card: 240 15% 5%;
+    --card-foreground: 240 20% 95%;
+    --popover: 240 15% 5%;
+    --popover-foreground: 240 20% 95%;
+    --primary: 350 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 12% 10%;
+    --secondary-foreground: 240 20% 80%;
+    --muted: 240 10% 8%;
+    --muted-foreground: 240 10% 50%;
+    --accent: 270 80% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 90% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 12%;
+    --input: 240 10% 10%;
+    --ring: 350 100% 50%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground select-none;
+    font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: 0.015em;
+    background: #07070d;
+  }
+
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #FF003C, #7C3AED);
+    border-radius: 2px;
+  }
+
+  .blurz {
+    animation: blurIn 0.6s cubic-bezier(0.4,0,0.2,1) forwards;
+  }
+  @keyframes blurIn {
+    from { filter: blur(8px); opacity: 0; transform: scale(0.97); }
+    to   { filter: blur(0);   opacity: 1; transform: scale(1); }
+  }
+
+  /* Ambient background orbs */
+  .remix-bg::before {
+    content: '';
+    position: fixed;
+    top: -20%; left: -10%;
+    width: 60vw; height: 60vh;
+    background: radial-gradient(ellipse, rgba(139,0,0,0.10) 0%, transparent 70%);
+    animation: driftA 18s ease-in-out infinite alternate;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .remix-bg::after {
+    content: '';
+    position: fixed;
+    bottom: -20%; right: -10%;
+    width: 55vw; height: 55vh;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.09) 0%, transparent 70%);
+    animation: driftB 22s ease-in-out infinite alternate;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes driftA {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(8vw, 6vh) scale(1.15); }
+  }
+  @keyframes driftB {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(-6vw, -8vh) scale(1.1); }
+  }
+
+  .remix-card {
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .remix-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 0 28px rgba(255,0,60,0.22), 0 0 60px rgba(124,58,237,0.12);
+  }
+
+  .remix-gradient-text {
+    background: linear-gradient(135deg, #FF003C 0%, #9D4EDD 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .remix-shimmer {
+    background: linear-gradient(90deg, #121220 25%, #181828 50%, #121220 75%);
+    background-size: 400% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .remix-section-title {
+    font-family: 'Orbitron', 'Rajdhani', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #8888aa;
+  }
+
+  @keyframes bar1 { 0%,100%{height:4px}50%{height:16px} }
+  @keyframes bar2 { 0%,100%{height:12px}50%{height:4px} }
+  @keyframes bar3 { 0%,100%{height:8px}50%{height:20px} }
+  @keyframes bar4 { 0%,100%{height:16px}50%{height:6px} }
+  .viz-bar:nth-child(1) { animation: bar1 0.8s ease-in-out infinite; }
+  .viz-bar:nth-child(2) { animation: bar2 0.7s ease-in-out infinite 0.1s; }
+  .viz-bar:nth-child(3) { animation: bar3 0.9s ease-in-out infinite 0.2s; }
+  .viz-bar:nth-child(4) { animation: bar4 0.6s ease-in-out infinite 0.05s; }
+
+  .remix-glass {
+    background: rgba(10, 10, 20, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 0, 60, 0.07);
+  }
+
+  .remix-nav-item {
+    position: relative;
+    transition: color 0.2s, background 0.2s;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+  }
+  .remix-nav-item.active {
+    color: #FF003C;
+  }
+  .remix-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 70%;
+    background: linear-gradient(to bottom, #FF003C, #7C3AED);
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px rgba(255,0,60,0.7);
+  }
+
+  @keyframes pulseRing {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(1.06); }
+  }
+  .playing-ring::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    border: 2px solid #FF003C;
+    animation: pulseRing 1.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes revealUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reveal-up { animation: revealUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; }
+  .reveal-up-1 { animation-delay: 0.05s; opacity: 0; }
+  .reveal-up-2 { animation-delay: 0.1s; opacity: 0; }
+  .reveal-up-3 { animation-delay: 0.15s; opacity: 0; }
+  .reveal-up-4 { animation-delay: 0.2s; opacity: 0; }
+}
