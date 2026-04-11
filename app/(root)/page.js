@@ -8,15 +8,29 @@ import { getSongsByQuery, searchAlbumByQuery } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
 import { useEffect, useState } from "react";
 
-function Section({ label, sub, children }) {
+// Demon-themed section titles — the style that was requested from the start
+const SECTIONS = {
+  ytTrending:  { label: "🔴 Trending on YouTube",     sub: "Souls most summoned across the mortal realm"          },
+  newReleases: { label: "New Releases",                sub: "Fresh blood spilled from the underworld"              },
+  trending:    { label: "Trending Now",                sub: "The chants echoing through the abyss this week"       },
+  ytLofi:      { label: "🎵 Lo-fi & Chill",            sub: "Haunting melodies for the restless undead"            },
+  artists:     { label: "Artists",                     sub: "Voices conjured from the depths of hell"              },
+  albums:      { label: "Albums",                      sub: "Grimoires of sound sealed in blood"                   },
+  ytHiphop:    { label: "🎤 Hip Hop & Rap",            sub: "Bars forged in hellfire and ice"                      },
+  bollywood:   { label: "Bollywood Hits",              sub: "Mortal realm anthems that shake the pits of Jahannam" },
+  punjabi:     { label: "Punjabi Hits",                sub: "Thunderous hymns that wake the ancient spirits"       },
+};
+
+function Section({ id, children }) {
+  const s = SECTIONS[id];
   return (
     <section>
-      <div className="mb-4">
+      <div className="mb-5">
         <h2 className="text-base font-bold"
           style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
-          {label}
+          {s.label}
         </h2>
-        <p className="remix-section-title mt-0.5">{sub}</p>
+        <p className="remix-section-title mt-0.5">{s.sub}</p>
       </div>
       {children}
     </section>
@@ -30,8 +44,7 @@ function SkeletonRow({ count = 7 }) {
     </div>
   );
 }
-
-function YTSkeletonRow({ count = 5 }) {
+function YTSkeleton({ count = 5 }) {
   return (
     <div className="flex gap-4">
       {Array.from({ length: count }).map((_, i) => (
@@ -46,27 +59,23 @@ function YTSkeletonRow({ count = 5 }) {
 }
 
 export default function Page() {
-  // Saavn state
-  const [latest,    setLatest]    = useState([]);
-  const [trending,  setTrending]  = useState([]);
-  const [albums,    setAlbums]    = useState([]);
-  const [bollywood, setBollywood] = useState([]);
-  const [punjabi,   setPunjabi]   = useState([]);
-
-  // YouTube state
+  const [latest,     setLatest]     = useState([]);
+  const [trending,   setTrending]   = useState([]);
+  const [albums,     setAlbums]     = useState([]);
+  const [bollywood,  setBollywood]  = useState([]);
+  const [punjabi,    setPunjabi]    = useState([]);
   const [ytTrending, setYtTrending] = useState([]);
   const [ytLofi,     setYtLofi]     = useState([]);
   const [ytHiphop,   setYtHiphop]   = useState([]);
   const [ytHasKey,   setYtHasKey]   = useState(false);
 
   useEffect(() => {
-    // Saavn — parallel
     Promise.all([
-      getSongsByQuery("new hindi songs 2024",  1, 15).then(r => r.json()).catch(() => null),
-      getSongsByQuery("trending hits 2024",    1, 15).then(r => r.json()).catch(() => null),
-      searchAlbumByQuery("latest album 2024",  1, 12).then(r => r.json()).catch(() => null),
-      getSongsByQuery("bollywood hits",        1, 12).then(r => r.json()).catch(() => null),
-      getSongsByQuery("punjabi songs 2024",    1, 12).then(r => r.json()).catch(() => null),
+      getSongsByQuery("new hindi songs 2024", 1, 15).then(r => r.json()).catch(() => null),
+      getSongsByQuery("trending hits 2024",   1, 15).then(r => r.json()).catch(() => null),
+      searchAlbumByQuery("latest album 2024", 1, 12).then(r => r.json()).catch(() => null),
+      getSongsByQuery("bollywood hits",       1, 12).then(r => r.json()).catch(() => null),
+      getSongsByQuery("punjabi songs 2024",   1, 12).then(r => r.json()).catch(() => null),
     ]).then(([r1, r2, r3, r4, r5]) => {
       if (r1) setLatest(r1?.data?.results    || []);
       if (r2) setTrending(r2?.data?.results  || []);
@@ -75,17 +84,15 @@ export default function Page() {
       if (r5) setPunjabi(r5?.data?.results   || []);
     });
 
-    // YouTube — only if key set
     const apiOk = hasApiKey();
     setYtHasKey(apiOk);
     if (apiOk) {
       getTrending("IN", "music").then(({ items }) => setYtTrending(items.slice(0, 12)));
       searchYT("lofi chill music", "video").then(({ items }) => setYtLofi(items.slice(0, 10)));
-      searchYT("hip hop music 2024", "video").then(({ items }) => setYtHiphop(items.slice(0, 10)));
+      searchYT("hip hop rap 2024", "video").then(({ items }) => setYtHiphop(items.slice(0, 10)));
     }
   }, []);
 
-  // Extract unique artists
   const artists = latest.length
     ? [...new Map(
         latest.filter(s => s?.artists?.primary?.[0]?.id)
@@ -96,7 +103,7 @@ export default function Page() {
   return (
     <div className="px-5 md:px-8 lg:px-10 py-8 space-y-12">
 
-      {/* Hero */}
+      {/* ── Hero ─────────────────────────────────────────── */}
       <div className="reveal-up rounded-2xl px-7 py-8 relative overflow-hidden"
         style={{
           background: "linear-gradient(135deg, rgba(139,0,0,0.25) 0%, rgba(18,18,32,0.9) 50%, rgba(124,58,237,0.15) 100%)",
@@ -123,70 +130,62 @@ export default function Page() {
           </h1>
           <p className="text-sm font-medium"
             style={{ color: "#8888aa", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>
-            SAAVN AUDIO + YOUTUBE VIDEO — ALL IN ONE PLAYER
+            UNLEASH THE SOUND FROM THE ABYSS — SAAVN + YOUTUBE IN ONE INFERNAL PLAYER
           </p>
         </div>
       </div>
 
-      {/* ── YouTube Trending (if key set) ─────────────────── */}
+      {/* ── YouTube Trending ─────────────────────────────── */}
       {ytHasKey && (
-        <Section label="🔴 YouTube Trending" sub="Top music videos right now">
+        <Section id="ytTrending">
           <ScrollArea>
             <div className="flex gap-4 pb-3">
-              {ytTrending.length ? ytTrending.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeletonRow />}
+              {ytTrending.length ? ytTrending.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeleton />}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </Section>
       )}
 
-      {/* ── Saavn New Releases ─────────────────────────────── */}
-      <Section label="New Releases" sub="Fresh drops from JioSaavn">
+      {/* ── Saavn New Releases ───────────────────────────── */}
+      <Section id="newReleases">
         <ScrollArea>
           <div className="flex gap-4 pb-3">
             {latest.length
-              ? latest.map(s => (
-                  <SongCard key={s.id} id={s.id}
-                    image={s.image?.[2]?.url} title={s.name}
-                    artist={s.artists?.primary?.[0]?.name} />
-                ))
+              ? latest.map(s => <SongCard key={s.id} id={s.id} image={s.image?.[2]?.url} title={s.name} artist={s.artists?.primary?.[0]?.name} />)
               : <SkeletonRow />}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Section>
 
-      {/* ── Saavn Trending ────────────────────────────────── */}
-      <Section label="Trending Songs" sub="Most played this week">
+      {/* ── Saavn Trending ───────────────────────────────── */}
+      <Section id="trending">
         <ScrollArea>
           <div className="flex gap-4 pb-3">
             {trending.length
-              ? trending.map(s => (
-                  <SongCard key={s.id} id={s.id}
-                    image={s.image?.[2]?.url} title={s.name}
-                    artist={s.artists?.primary?.[0]?.name} />
-                ))
+              ? trending.map(s => <SongCard key={s.id} id={s.id} image={s.image?.[2]?.url} title={s.name} artist={s.artists?.primary?.[0]?.name} />)
               : <SkeletonRow />}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Section>
 
-      {/* ── YouTube Lo-fi ─────────────────────────────────── */}
+      {/* ── YouTube Lo-fi ────────────────────────────────── */}
       {ytHasKey && (
-        <Section label="🎵 YouTube Lo-fi & Chill" sub="Perfect study & focus vibes">
+        <Section id="ytLofi">
           <ScrollArea>
             <div className="flex gap-4 pb-3">
-              {ytLofi.length ? ytLofi.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeletonRow count={4} />}
+              {ytLofi.length ? ytLofi.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeleton count={4} />}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </Section>
       )}
 
-      {/* ── Artists ───────────────────────────────────────── */}
+      {/* ── Artists ──────────────────────────────────────── */}
       {artists.length > 0 && (
-        <Section label="Artists" sub="Voices you love">
+        <Section id="artists">
           <ScrollArea>
             <div className="flex gap-5 pb-3">
               {artists.map(a => (
@@ -201,77 +200,66 @@ export default function Page() {
         </Section>
       )}
 
-      {/* ── Albums ────────────────────────────────────────── */}
-      <Section label="Albums" sub="Complete collections">
+      {/* ── Albums ───────────────────────────────────────── */}
+      <Section id="albums">
         <ScrollArea>
           <div className="flex gap-4 pb-3">
             {albums.length
-              ? albums.map(a => (
-                  <AlbumCard key={a.id} id={`album/${a.id}`}
-                    image={a.image?.[2]?.url} title={a.name}
-                    artist={a.artists?.primary?.[0]?.name || a.description}
-                    lang={a.language} />
-                ))
+              ? albums.map(a => <AlbumCard key={a.id} id={`album/${a.id}`} image={a.image?.[2]?.url} title={a.name} artist={a.artists?.primary?.[0]?.name || a.description} lang={a.language} />)
               : <SkeletonRow />}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Section>
 
-      {/* ── YouTube Hip Hop ───────────────────────────────── */}
+      {/* ── YouTube Hip Hop ──────────────────────────────── */}
       {ytHasKey && (
-        <Section label="🎤 YouTube Hip Hop" sub="Latest rap & hip hop videos">
+        <Section id="ytHiphop">
           <ScrollArea>
             <div className="flex gap-4 pb-3">
-              {ytHiphop.length ? ytHiphop.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeletonRow count={4} />}
+              {ytHiphop.length ? ytHiphop.map(v => <YTCard key={v.id} item={v} layout="scroll" />) : <YTSkeleton count={4} />}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </Section>
       )}
 
-      {/* ── Bollywood Hits ────────────────────────────────── */}
-      <Section label="Bollywood Hits" sub="Timeless classics & new bangers">
+      {/* ── Bollywood ────────────────────────────────────── */}
+      <Section id="bollywood">
         <ScrollArea>
           <div className="flex gap-4 pb-3">
             {bollywood.length
-              ? bollywood.map(s => (
-                  <SongCard key={s.id} id={s.id}
-                    image={s.image?.[2]?.url} title={s.name}
-                    artist={s.artists?.primary?.[0]?.name} />
-                ))
+              ? bollywood.map(s => <SongCard key={s.id} id={s.id} image={s.image?.[2]?.url} title={s.name} artist={s.artists?.primary?.[0]?.name} />)
               : <SkeletonRow count={6} />}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Section>
 
-      {/* ── Punjabi Hits ──────────────────────────────────── */}
-      <Section label="Punjabi Hits" sub="High energy Punjabi music">
+      {/* ── Punjabi ──────────────────────────────────────── */}
+      <Section id="punjabi">
         <ScrollArea>
           <div className="flex gap-4 pb-3">
             {punjabi.length
-              ? punjabi.map(s => (
-                  <SongCard key={s.id} id={s.id}
-                    image={s.image?.[2]?.url} title={s.name}
-                    artist={s.artists?.primary?.[0]?.name} />
-                ))
+              ? punjabi.map(s => <SongCard key={s.id} id={s.id} image={s.image?.[2]?.url} title={s.name} artist={s.artists?.primary?.[0]?.name} />)
               : <SkeletonRow count={6} />}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Section>
 
-      {/* No YT key nudge */}
+      {/* ── No YT key nudge ──────────────────────────────── */}
       {!ytHasKey && (
         <div className="p-5 rounded-2xl text-center"
           style={{ background: "rgba(18,18,32,0.6)", border: "1px solid rgba(255,0,60,0.07)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
-            🔴 YouTube sections not loaded
+            🔴 YouTube sections sealed behind the gate
           </p>
           <p className="text-xs" style={{ color: "#8888aa" }}>
-            Add <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>NEXT_PUBLIC_RAPIDAPI_KEY</code> to{" "}
-            <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>.env.local</code> to enable YouTube content.
+            Add{" "}
+            <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>NEXT_PUBLIC_RAPIDAPI_KEY</code>
+            {" "}to <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>.env.local</code>
+            {" "}to unseal the YouTube dimension.
           </p>
         </div>
       )}

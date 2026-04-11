@@ -232,6 +232,20 @@ export default function MusicProvider({ children }) {
     } catch {}
   }, []);
 
+
+  // ── Mutual exclusion: pause when YouTube starts playing ────────
+  useEffect(() => {
+    const handler = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        audio.pause();
+        setPlaying(false);
+      }
+    };
+    window.addEventListener("remix:yt:playing", handler);
+    return () => window.removeEventListener("remix:yt:playing", handler);
+  }, []);
+
   // ── Global keyboard shortcuts ──────────────────────────
   useEffect(() => {
     const handler = (e) => {
