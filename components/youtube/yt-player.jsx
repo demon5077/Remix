@@ -1,44 +1,42 @@
 "use client";
 /**
- * YTPlayer — embeds YouTube iframe + shows queue/related.
- * Lives in the right sidebar panel on desktop, or as bottom sheet on mobile.
+ * YTPlayer — YouTube iframe embed + queue/related panel.
+ * Fixes: no hook-in-callback violations, correct queue play logic.
  */
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useYT } from "@/hooks/use-youtube";
 import { getRelatedVideos } from "@/lib/youtube";
 import {
   SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Heart, Plus, X, List, PlayCircle, ChevronDown,
+  Heart, Plus, X, ChevronDown,
 } from "lucide-react";
-import { IoPause, IoPlay } from "react-icons/io5";
+import { IoPlay } from "react-icons/io5";
 import { toast } from "sonner";
 
 export default function YTPlayer({ onClose }) {
   const {
-    currentVideo, playing, queue, history,
-    togglePlay, next, prev, addToQueue, setQueue,
-    removeFromQueue, toggleShuffle, shuffle,
-    setRepeat, repeat, stop,
-    toggleLike, isLiked, getLiked,
+    currentVideo, queue, history,
+    next, prev, addToQueue, setQueue, removeFromQueue,
+    toggleShuffle, shuffle, setRepeat, repeat, stop,
+    toggleLike, isLiked, playVideo,
   } = useYT();
 
-  const [related,      setRelated]      = useState([]);
-  const [loadingRel,   setLoadingRel]   = useState(false);
-  const [activeTab,    setActiveTab]    = useState("queue"); // queue | related
-  const [liked,        setLiked]        = useState(false);
-  const iframeRef = useRef(null);
+  const [related,    setRelated]    = useState([]);
+  const [loadingRel, setLoadingRel] = useState(false);
+  const [activeTab,  setActiveTab]  = useState("queue");
+  const [liked,      setLiked]      = useState(false);
 
-  // Load related videos when track changes
   useEffect(() => {
     if (!currentVideo) return;
     setLiked(isLiked(currentVideo.id));
     setLoadingRel(true);
+    setRelated([]);
     getRelatedVideos(currentVideo.id).then(({ items }) => {
-      const valid = items.filter(Boolean).slice(0, 20);
+      const valid = items.filter(Boolean).slice(0, 25);
       setRelated(valid);
-      // Auto-fill queue if empty
+      // Auto-seed queue if it is empty
       if (valid.length > 0 && queue.length === 0) {
-        setQueue(valid.slice(0, 8));
+        setQueue(valid.slice(0, 10));
       }
       setLoadingRel(false);
     });
@@ -47,63 +45,72 @@ export default function YTPlayer({ onClose }) {
   const handleLike = () => {
     if (!currentVideo) return;
     toggleLike(currentVideo);
-    setLiked(prev => !prev);
-    toast(liked ? "Removed from Liked" : "❤️ Added to Liked");
+    const next = !liked;
+    setLiked(next);
+    toast(next ? "❤️ Added to Liked" : "Removed from Liked");
   };
 
   const cycleRepeat = () => {
     const modes = ["none", "one", "all"];
-    const idx   = modes.indexOf(repeat);
-    setRepeat(modes[(idx + 1) % modes.length]);
+    setRepeat(modes[(modes.indexOf(repeat) + 1) % modes.length]);
+  };
+
+  // Play a song from the queue at index i
+  const playFromQueue = (item, idx) => {
+    const newQueue = queue.filter((_, i) => i !== idx);
+    setQueue(newQueue);
+    playVideo(item);
   };
 
   if (!currentVideo) return null;
 
-  const TABS = ["queue", "related"];
-
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: "rgba(5,5,10,0.98)" }}>
 
-      {/* Close button (mobile modal only) */}
+      {/* Mobile close */}
       {onClose && (
         <div className="flex items-center justify-between px-4 pt-3 pb-1 flex-shrink-0">
-          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif" }}>Now Playing</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center"
+          <p className="text-[0.6rem] font-bold uppercase tracking-widest"
+            style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif" }}>
+            Now Playing
+          </p>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center"
             style={{ background: "rgba(255,0,60,0.1)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C" }}>
             <ChevronDown className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* ── YouTube iframe ────────────────────────────── */}
-      <div className="flex-shrink-0 w-full aspect-video bg-black relative">
+      {/* ── iframe ──────────────────────────────────── */}
+      <div className="flex-shrink-0 w-full aspect-video bg-black">
         <iframe
-          ref={iframeRef}
           key={currentVideo.id}
-          src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
+          src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
           title={currentVideo.title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           className="w-full h-full"
+          style={{ border: "none" }}
         />
       </div>
 
-      {/* ── Song info + controls ──────────────────────── */}
+      {/* ── Info + controls ─────────────────────────── */}
       <div className="flex-shrink-0 px-4 pt-3 pb-2"
         style={{ borderBottom: "1px solid rgba(255,0,60,0.06)" }}>
 
-        {/* Title + like */}
-        <div className="flex items-start gap-2 mb-2">
+        <div className="flex items-start gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold leading-snug line-clamp-2"
               style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
               {currentVideo.title}
             </p>
-            <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>{currentVideo.channelTitle}</p>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>
+              {currentVideo.channelTitle}
+            </p>
           </div>
           <button onClick={handleLike}
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 hover:scale-110"
             style={{
               background: liked ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.05)",
               border:     liked ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.08)",
@@ -113,61 +120,59 @@ export default function YTPlayer({ onClose }) {
           </button>
         </div>
 
-        {/* Transport controls */}
+        {/* Transport */}
         <div className="flex items-center justify-between">
-          {/* Shuffle */}
           <button onClick={toggleShuffle}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{ color: shuffle ? "#FF003C" : "#44445a", background: shuffle ? "rgba(255,0,60,0.08)" : "transparent" }}>
+            style={{ color: shuffle ? "#FF003C" : "#44445a", background: shuffle ? "rgba(255,0,60,0.08)" : "transparent" }}
+            title="Shuffle">
             <Shuffle className="w-3.5 h-3.5" />
           </button>
 
-          {/* Prev */}
           <button onClick={prev}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{ color: history.length > 0 ? "#8888aa" : "#2a2a3a" }}>
+            style={{ color: history.length > 0 ? "#8888aa" : "#2a2a3a" }}
+            title="Previous">
             <SkipBack className="w-4 h-4" />
           </button>
 
-          {/* Play/Pause — note: iframe controls playback, this is visual only */}
-          <button
-            className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
+          {/* Centre play — visual only, iframe controls actual playback */}
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center"
             style={{
               background: "linear-gradient(135deg, #8B0000, #FF003C)",
-              boxShadow:  "0 0 18px rgba(255,0,60,0.5)",
-            }}
-            onClick={() => {
-              // We can't control iframe playback directly without YT API JS
-              // This button is intentionally a visual indicator
-              toast("Use the video controls to play/pause", { duration: 2000 });
-            }}
-          >
+              boxShadow:  "0 0 18px rgba(255,0,60,0.45)",
+            }}>
             <IoPlay className="w-5 h-5 text-white ml-0.5" />
-          </button>
+          </div>
 
-          {/* Next */}
           <button onClick={next}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{ color: queue.length > 0 ? "#8888aa" : "#2a2a3a" }}>
+            style={{ color: queue.length > 0 ? "#8888aa" : "#2a2a3a" }}
+            title="Next">
             <SkipForward className="w-4 h-4" />
           </button>
 
-          {/* Repeat */}
           <button onClick={cycleRepeat}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{ color: repeat !== "none" ? "#FF003C" : "#44445a", background: repeat !== "none" ? "rgba(255,0,60,0.08)" : "transparent" }}>
+            style={{ color: repeat !== "none" ? "#FF003C" : "#44445a", background: repeat !== "none" ? "rgba(255,0,60,0.08)" : "transparent" }}
+            title={`Repeat: ${repeat}`}>
             {repeat === "one" ? <Repeat1 className="w-3.5 h-3.5" /> : <Repeat className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* ── Queue / Related tabs ──────────────────────── */}
-      <div className="flex gap-1 px-4 pt-3 pb-2 flex-shrink-0">
-        {TABS.map(tab => (
+      {/* ── Tabs ─────────────────────────────────────── */}
+      <div className="flex gap-1.5 px-4 pt-3 pb-2 flex-shrink-0">
+        {["queue", "related"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className="px-3 py-1 rounded-full text-[0.58rem] font-bold uppercase tracking-widest transition-all"
+            className="px-3 py-1 rounded-full transition-all"
             style={{
               fontFamily: "Orbitron, sans-serif",
+              fontSize:   "0.55rem",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
               background: activeTab === tab ? "rgba(255,0,60,0.15)" : "transparent",
               border:     activeTab === tab ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.06)",
               color:      activeTab === tab ? "#FF003C" : "#44445a",
@@ -177,31 +182,25 @@ export default function YTPlayer({ onClose }) {
         ))}
       </div>
 
-      {/* Tab content — scrollable */}
-      <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+      {/* ── Tab content ──────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-1.5 min-h-0">
 
         {/* Queue */}
         {activeTab === "queue" && (
           <>
             {queue.length === 0 && (
-              <p className="text-xs text-center py-8" style={{ color: "#44445a" }}>
-                Queue empty — add videos with the + button
+              <p className="text-xs text-center py-10" style={{ color: "#44445a" }}>
+                Queue is empty — click + on any video
               </p>
             )}
             {queue.map((item, i) => item && (
-              <YTQueueRow
-                key={item.id + i}
+              <QueueRow
+                key={`${item.id}-${i}`}
                 item={item}
                 index={i}
-                onPlay={() => {
-                  const rest = [...queue];
-                  rest.splice(i, 1);
-                  setQueue(rest);
-                  const { playVideo } = useYT();
-                  // Can't call hook in callback, use a workaround
-                }}
+                isActive={currentVideo.id === item.id}
+                onPlay={() => playFromQueue(item, i)}
                 onRemove={() => removeFromQueue(i)}
-                isActive={currentVideo?.id === item.id}
               />
             ))}
           </>
@@ -210,22 +209,21 @@ export default function YTPlayer({ onClose }) {
         {/* Related */}
         {activeTab === "related" && (
           <>
-            {loadingRel && (
-              <div className="space-y-1.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex gap-2 p-2 rounded-xl" style={{ background: "rgba(18,18,32,0.4)" }}>
-                    <div className="remix-shimmer w-16 h-9 rounded-md flex-shrink-0" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="remix-shimmer h-3 w-3/4 rounded" />
-                      <div className="remix-shimmer h-2.5 w-1/2 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!loadingRel && related.map((item) => item && (
-              <YTRelatedRow key={item.id} item={item} isActive={currentVideo?.id === item.id} />
+            {loadingRel && <ShimmerRows />}
+            {!loadingRel && related.map(item => item && (
+              <RelatedRow
+                key={item.id}
+                item={item}
+                isActive={currentVideo.id === item.id}
+                onPlay={() => playVideo(item)}
+                onQueue={() => { addToQueue(item); toast("Added to queue"); }}
+              />
             ))}
+            {!loadingRel && related.length === 0 && (
+              <p className="text-xs text-center py-10" style={{ color: "#44445a" }}>
+                No related videos found
+              </p>
+            )}
           </>
         )}
       </div>
@@ -233,18 +231,21 @@ export default function YTPlayer({ onClose }) {
   );
 }
 
-function YTQueueRow({ item, index, onRemove, isActive }) {
-  const { playVideo } = useYT();
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function QueueRow({ item, index, isActive, onPlay, onRemove }) {
   return (
     <div
-      className="flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all duration-200"
+      className="flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all duration-200 group"
       style={{
-        background: isActive ? "rgba(255,0,60,0.1)" : "rgba(18,18,32,0.5)",
+        background: isActive ? "rgba(255,0,60,0.1)"  : "rgba(18,18,32,0.5)",
         border:     isActive ? "1px solid rgba(255,0,60,0.25)" : "1px solid rgba(255,255,255,0.04)",
       }}
-      onClick={() => playVideo(item)}
+      onClick={onPlay}
+      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(24,24,40,0.9)"; }}
+      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "rgba(18,18,32,0.5)"; }}
     >
-      <span className="w-4 text-center text-[0.58rem] flex-shrink-0"
+      <span className="w-5 text-center flex-shrink-0 text-[0.55rem] font-bold"
         style={{ color: isActive ? "#FF003C" : "#44445a", fontFamily: "Orbitron, sans-serif" }}>
         {isActive ? "▶" : index + 1}
       </span>
@@ -252,11 +253,15 @@ function YTQueueRow({ item, index, onRemove, isActive }) {
         className="w-[52px] h-[29px] rounded object-cover flex-shrink-0"
         style={{ background: "rgba(18,18,32,0.8)" }} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold line-clamp-1" style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+        <p className="text-xs font-semibold line-clamp-1"
+          style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
+          {item.title}
+        </p>
         <p className="text-[10px] truncate" style={{ color: "#8888aa" }}>{item.channelTitle}</p>
       </div>
-      <button onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+      <button
+        onClick={e => { e.stopPropagation(); onRemove(); }}
+        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
         style={{ color: "#FF003C" }}>
         <X className="w-3 h-3" />
       </button>
@@ -264,16 +269,15 @@ function YTQueueRow({ item, index, onRemove, isActive }) {
   );
 }
 
-function YTRelatedRow({ item, isActive }) {
-  const { playVideo, addToQueue } = useYT();
+function RelatedRow({ item, isActive, onPlay, onQueue }) {
   return (
     <div
       className="flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all duration-200 group"
       style={{
-        background: isActive ? "rgba(255,0,60,0.1)" : "rgba(18,18,32,0.5)",
+        background: isActive ? "rgba(255,0,60,0.1)"  : "rgba(18,18,32,0.5)",
         border:     isActive ? "1px solid rgba(255,0,60,0.25)" : "1px solid rgba(255,255,255,0.04)",
       }}
-      onClick={() => playVideo(item)}
+      onClick={onPlay}
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(24,24,40,0.9)"; }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "rgba(18,18,32,0.5)"; }}
     >
@@ -287,14 +291,35 @@ function YTRelatedRow({ item, isActive }) {
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold line-clamp-1" style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+        <p className="text-xs font-semibold line-clamp-1"
+          style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
+          {item.title}
+        </p>
         <p className="text-[10px] truncate" style={{ color: "#8888aa" }}>{item.channelTitle}</p>
       </div>
-      <button onClick={(e) => { e.stopPropagation(); addToQueue(item); toast("Added to queue"); }}
+      <button
+        onClick={e => { e.stopPropagation(); onQueue(); }}
         className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ color: "#FF003C" }}>
+        style={{ color: "#9D4EDD" }}
+        title="Add to queue">
         <Plus className="w-3 h-3" />
       </button>
+    </div>
+  );
+}
+
+function ShimmerRows() {
+  return (
+    <div className="space-y-1.5">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex gap-2 p-2 rounded-xl" style={{ background: "rgba(18,18,32,0.4)" }}>
+          <div className="remix-shimmer w-[52px] h-[29px] rounded flex-shrink-0" />
+          <div className="flex-1 space-y-1.5 pt-0.5">
+            <div className="remix-shimmer h-2.5 w-4/5 rounded" />
+            <div className="remix-shimmer h-2 w-3/5 rounded" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
