@@ -1,20 +1,29 @@
 "use client";
 /**
- * UnifiedModal — single full-screen player for BOTH sources.
- * Saavn tab: audio controls + seek bar + queue/related
- * YouTube tab: iframe embed + queue/related
- * Audio/Video toggle for YT: audio-only mode uses ytdl audio stream workaround
+ * UnifiedModal — Full-screen player.
+ *
+ * Desktop layout:
+ * ┌──────────────────────┬─────────────────────┐
+ * │  LEFT: Player        │  RIGHT: Queue/List   │
+ * │  420px fixed width   │  flex-1 remainder    │
+ * └──────────────────────┴─────────────────────┘
+ *
+ * Mobile: stacked, scrollable.
+ *
+ * YouTube audio: iframe lives in a FIXED container in YTProvider.
+ * In audio mode: container is 1x1px off-screen, audio keeps playing.
+ * In video mode: we position the container to cover the slot div using
+ * positionIframeOver() / hideIframeToBackground() from use-youtube.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useMusicProvider } from "@/hooks/use-context";
-import { useYT } from "@/hooks/use-youtube";
+import { useYT, positionIframeOver, hideIframeToBackground } from "@/hooks/use-youtube";
 import { getSongsSuggestions } from "@/lib/fetch";
-import { getRelatedVideos } from "@/lib/youtube";
+import { getRelatedVideos, searchYT } from "@/lib/youtube";
 import {
   ChevronDown, Repeat, Repeat1, Volume2, VolumeX,
-  Download, Share2, Heart, Plus, X,
-  SkipBack, SkipForward, Shuffle,
-  Music, Video,
+  Download, Share2, Heart, Plus, X, SkipBack, SkipForward, Shuffle,
+  Music2, Video, Play,
 } from "lucide-react";
 import { IoPause, IoPlay } from "react-icons/io5";
 import Link from "next/link";
@@ -24,30 +33,55 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
   const saavn = useMusicProvider();
   const yt    = useYT();
 
-  // Which source tab is shown in the modal
-  const [tab,          setTab]        = useState(activeSource || "saavn");
-  const [ytMode,       setYtMode]     = useState("video"); // "video" | "audio"
+  const [tab,       setTab]      = useState(activeSource || "saavn");
+  const videoSlotRef             = useRef(null);
 
-  // Saavn data
-  const [saavnSugg,    setSaavnSugg]  = useState([]);
-  const [saavnLoading, setSaavnLoad]  = useState(false);
-  const [saavnLiked,   setSaavnLiked] = useState(false);
-  const [saavnTab,     setSaavnTab]   = useState("related");
+  // Saavn state
+  const [saavnSugg,  setSaavnSugg] = useState([]);
+  const [saavnLoad,  setSaavnLoad] = useState(false);
+  const [saavnLiked, setSaavnLike] = useState(false);
+  const [saavnTab,   setSaavnTab]  = useState("related");
 
-  // YT data
-  const [ytRelated,    setYtRelated]  = useState([]);
-  const [ytLoading,    setYtLoad]     = useState(false);
-  const [ytLiked,      setYtLiked]    = useState(false);
-  const [ytTab,        setYtTab]      = useState("queue");
+  // YT state
+  const [ytRelated,  setYtRelated] = useState([]);
+  const [ytLoad,     setYtLoad]    = useState(false);
+  const [ytLiked,    setYtLiked]   = useState(false);
+  const [ytTab,      setYtTab]     = useState("queue");
 
-  // Sync tab to active source when it changes
+  // Sync tab with source
+  useEffect(() => { if (activeSource) setTab(activeSource); }, [activeSource]);
+
+  // ── Position iframe over the video slot ──────────────────────────
+  // Runs after layout paint so we have accurate getBoundingClientRect
+  useLayoutEffect(() => {
+    if (!open || tab !== "yt" || yt.ytMode !== "video") {
+      hideIframeToBackground();
+      return;
+    }
+    if (!videoSlotRef.current) return;
+
+    // Position immediately
+    positionIframeOver(videoSlotRef.current);
+
+    // Reposition on window resize
+    const onResize = () => positionIframeOver(videoSlotRef.current);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      hideIframeToBackground();
+    };
+  }, [open, tab, yt.ytMode]);
+
+  // Also reposition when slot re-renders (e.g. layout shift)
   useEffect(() => {
-    if (activeSource) setTab(activeSource);
-  }, [activeSource]);
+    if (!open || tab !== "yt" || yt.ytMode !== "video" || !videoSlotRef.current) return;
+    const timer = setTimeout(() => positionIframeOver(videoSlotRef.current), 100);
+    return () => clearTimeout(timer);
+  }, [open, tab, yt.ytMode]);
 
-  // Load Saavn suggestions
+  // ── Load data ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!saavn.music) return;
+    if (!saavn.music || !open) return;
     setSaavnLoad(true);
     getSongsSuggestions(saavn.music, 20)
       .then(r => r.json())
@@ -55,36 +89,50 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
         const songs = d?.data || [];
         setSaavnSugg(songs);
         saavn.setQueue(prev => prev.length === 0 ? songs.slice(0, 10) : prev);
+        setSaavnLike(JSON.parse(localStorage.getItem("remix:likes") || "[]").includes(saavn.music));
       })
       .catch(() => {})
       .finally(() => setSaavnLoad(false));
-    try {
-      const likes = JSON.parse(localStorage.getItem("remix:likes") || "[]");
-      setSaavnLiked(likes.includes(saavn.music));
-    } catch {}
-  }, [saavn.music]);
+  }, [saavn.music, open]);
 
-  // Load YT related
   useEffect(() => {
-    if (!yt.currentVideo) return;
+    if (!yt.currentVideo || !open) return;
     setYtLoad(true);
     setYtRelated([]);
     getRelatedVideos(yt.currentVideo.id).then(({ items }) => {
       const valid = items.filter(Boolean).slice(0, 20);
       setYtRelated(valid);
       if (valid.length > 0 && yt.queue.length === 0) yt.setQueue(valid.slice(0, 8));
+      setYtLiked(yt.isLiked(yt.currentVideo.id));
       setYtLoad(false);
     });
-    setYtLiked(yt.isLiked(yt.currentVideo.id));
-  }, [yt.currentVideo?.id]);
+  }, [yt.currentVideo?.id, open]);
 
+  // ── When Saavn tab + video mode: find YT song and play audio ─────
+  const [saavnYtSearching, setSaavnYtSearching] = useState(false);
+  const findYtForSaavn = async () => {
+    if (!saavn.songData) return;
+    const q = `${saavn.songData.name} ${saavn.songData.artists?.primary?.[0]?.name || ""} official`;
+    setSaavnYtSearching(true);
+    const { items } = await searchYT(q, "video");
+    setSaavnYtSearching(false);
+    if (items?.[0]) {
+      yt.playVideo(items[0]);
+      setTab("yt");
+      toast("🎬 Opened YouTube version");
+    } else {
+      toast.error("YouTube version not found");
+    }
+  };
+
+  // ── Actions ─────────────────────────────────────────────────────
   const toggleSaavnLike = () => {
     try {
       const likes = JSON.parse(localStorage.getItem("remix:likes") || "[]");
       const next  = saavnLiked ? likes.filter(id => id !== saavn.music) : [...likes, saavn.music];
       localStorage.setItem("remix:likes", JSON.stringify(next));
-      setSaavnLiked(!saavnLiked);
-      toast(saavnLiked ? "Removed from Liked" : "❤️ Added to Liked");
+      setSaavnLike(!saavnLiked);
+      toast(!saavnLiked ? "❤️ Added to Liked" : "Removed from Liked");
     } catch {}
   };
 
@@ -98,505 +146,484 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
   const downloadSaavn = async () => {
     if (!saavn.audioURL) return;
     try {
-      toast("Downloading…");
+      toast("Downloading from the depths…");
       const blob = await fetch(saavn.audioURL).then(r => r.blob());
-      const a    = Object.assign(document.createElement("a"), {
+      Object.assign(document.createElement("a"), {
         href: URL.createObjectURL(blob),
         download: `${saavn.songData?.name || "song"}.mp3`,
-      });
-      a.click();
-      toast.success("Downloaded!");
+      }).click();
+      toast.success("Extracted from the void!");
     } catch { toast.error("Download failed"); }
   };
 
-  const shareSaavn = () => {
-    const url = `${window.location.origin}/${saavn.music}`;
-    navigator.share?.({ url }) || navigator.clipboard?.writeText(url);
-    toast("Link copied!");
-  };
-
-  const handleSaavnSeek = useCallback((e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    saavn.seek(((e.clientX - rect.left) / rect.width) * (saavn.duration || 0));
-  }, [saavn.seek, saavn.duration]);
-
   const playSaavnNext = () => {
-    const q = saavn.queue;
-    if (q.length > 0) {
-      const [next, ...rest] = q;
-      saavn.setQueue(rest);
-      saavn.playSong(next?.id || next);
-    } else if (saavnSugg.length > 0) {
-      saavn.playSong(saavnSugg[0].id);
-    }
+    const [next, ...rest] = saavn.queue;
+    if (next) { saavn.setQueue(rest); saavn.playSong(next?.id || next); }
+    else if (saavnSugg[0]) saavn.playSong(saavnSugg[0].id);
   };
 
   const playSaavnPrev = () => {
     if (saavn.currentTime > 3) { saavn.seek(0); return; }
-    if (saavn.recentlyPlayed.length > 1) saavn.playSong(saavn.recentlyPlayed[1].id);
+    if (saavn.recentlyPlayed?.length > 1) saavn.playSong(saavn.recentlyPlayed[1].id);
   };
+
+  const seekSaavn = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    saavn.seek(((e.clientX - rect.left) / rect.width) * (saavn.duration || 0));
+  }, [saavn.seek, saavn.duration]);
 
   if (!open) return null;
 
-  const hasSaavn = !!saavn.music;
-  const hasYT    = !!yt.currentVideo;
-
-  // Cover bg
-  const bgImage = tab === "saavn"
+  const hasSaavn  = !!saavn.music;
+  const hasYT     = !!yt.currentVideo;
+  const bgImg     = tab === "saavn"
     ? (saavn.songData?.image?.[2]?.url || "")
     : (yt.currentVideo?.thumbnail || "");
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col"
-      style={{ background: "rgba(0,0,0,0.97)", backdropFilter: "blur(30px)" }}>
+    <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "rgba(2,2,8,0.98)" }}>
 
-      {/* Ambient blurred bg */}
-      {bgImage && (
-        <div className="absolute inset-0 pointer-events-none opacity-10"
+      {/* ── Ambient bg ─────────────────────────────────────────── */}
+      {bgImg && (
+        <div className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage:    `url(${bgImage})`,
-            backgroundSize:     "cover",
-            backgroundPosition: "center",
-            filter:             "blur(60px) saturate(1.5)",
+            backgroundImage: `url(${bgImg})`,
+            backgroundSize: "cover", backgroundPosition: "center",
+            filter: "blur(80px) saturate(2)", opacity: 0.06,
           }} />
       )}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.92) 100%)" }} />
+        style={{ background: "linear-gradient(135deg, rgba(139,0,0,0.08) 0%, rgba(2,2,8,0.85) 100%)" }} />
 
-      <div className="relative z-10 flex flex-col h-full max-w-lg mx-auto w-full">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 h-14 flex-shrink-0"
+        style={{ borderBottom: "1px solid rgba(255,0,60,0.08)" }}>
 
-        {/* ── Top bar ─────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0">
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{ background: "rgba(255,0,60,0.1)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C" }}>
-            <ChevronDown className="w-5 h-5" />
-          </button>
+        <button onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          style={{ background: "rgba(255,0,60,0.1)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C" }}>
+          <ChevronDown className="w-5 h-5" />
+        </button>
 
-          {/* Source tabs */}
-          <div className="flex gap-1 rounded-xl p-1"
-            style={{ background: "rgba(18,18,32,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            {hasSaavn && (
-              <button onClick={() => setTab("saavn")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                style={{
-                  fontFamily:    "Orbitron, sans-serif",
-                  letterSpacing: "0.06em",
-                  background:    tab === "saavn" ? "rgba(255,0,60,0.2)" : "transparent",
-                  color:         tab === "saavn" ? "#FF003C" : "#44445a",
-                  border:        tab === "saavn" ? "1px solid rgba(255,0,60,0.3)" : "1px solid transparent",
-                }}>
-                <Music className="w-3 h-3" /> Audio
-              </button>
-            )}
-            {hasYT && (
-              <button onClick={() => setTab("yt")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                style={{
-                  fontFamily:    "Orbitron, sans-serif",
-                  letterSpacing: "0.06em",
-                  background:    tab === "yt" ? "rgba(255,0,0,0.2)" : "transparent",
-                  color:         tab === "yt" ? "#FF4444" : "#44445a",
-                  border:        tab === "yt" ? "1px solid rgba(255,0,0,0.3)" : "1px solid transparent",
-                }}>
-                <Video className="w-3 h-3" /> Video
-              </button>
-            )}
+        {/* Source tabs — only when both are active */}
+        {hasSaavn && hasYT ? (
+          <div className="flex rounded-xl overflow-hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(12,12,22,0.9)" }}>
+            <TabBtn active={tab === "saavn"} onClick={() => setTab("saavn")} color="#FF003C">
+              <Music2 className="w-3 h-3" /> Saavn
+            </TabBtn>
+            <TabBtn active={tab === "yt"} onClick={() => setTab("yt")} color="#FF4444">
+              <Video className="w-3 h-3" /> YouTube
+            </TabBtn>
           </div>
+        ) : (
+          <p className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif" }}>
+            {tab === "yt" ? "— YouTube —" : "— Now Playing —"}
+          </p>
+        )}
 
-          {/* Like button */}
-          <button
-            onClick={tab === "saavn" ? toggleSaavnLike : toggleYtLike}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-            style={{
-              background: (tab === "saavn" ? saavnLiked : ytLiked) ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.05)",
-              border:     (tab === "saavn" ? saavnLiked : ytLiked) ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.08)",
-              color:      (tab === "saavn" ? saavnLiked : ytLiked) ? "#FF003C" : "#44445a",
-            }}>
-            <Heart className={`w-4 h-4 ${(tab === "saavn" ? saavnLiked : ytLiked) ? "fill-current" : ""}`} />
-          </button>
+        {/* Like */}
+        <button onClick={tab === "saavn" ? toggleSaavnLike : toggleYtLike}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          style={{
+            background: (tab === "saavn" ? saavnLiked : ytLiked) ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.05)",
+            border:     (tab === "saavn" ? saavnLiked : ytLiked) ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.08)",
+            color:      (tab === "saavn" ? saavnLiked : ytLiked) ? "#FF003C" : "#44445a",
+          }}>
+          <Heart className={`w-4 h-4 ${(tab === "saavn" ? saavnLiked : ytLiked) ? "fill-current" : ""}`} />
+        </button>
+      </div>
+
+      {/* ── Body: LEFT player + RIGHT queue ────────────────────── */}
+      <div className="relative z-10 flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+
+        {/* ══════ LEFT PANEL ══════ */}
+        <div className="flex flex-col lg:w-[440px] xl:w-[500px] flex-shrink-0 px-6 sm:px-10 pt-6 pb-4 overflow-y-auto lg:border-r"
+          style={{ borderColor: "rgba(255,0,60,0.07)" }}>
+
+          {/* ── SAAVN ── */}
+          {tab === "saavn" && (
+            <>
+              {/* Album art */}
+              <div className="flex justify-center mb-6 flex-shrink-0">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden"
+                  style={{
+                    boxShadow: saavn.playing
+                      ? "0 0 60px rgba(255,0,60,0.5), 0 8px 40px rgba(0,0,0,0.8)"
+                      : "0 8px 40px rgba(0,0,0,0.8)",
+                    transition: "box-shadow 0.5s",
+                  }}>
+                  {saavn.isLoading
+                    ? <div className="remix-shimmer w-full h-full" />
+                    : <img src={saavn.songData?.image?.[2]?.url || ""} alt={saavn.songData?.name || ""}
+                        className="w-full h-full object-cover"
+                        style={{ border: "2px solid rgba(255,0,60,0.2)" }} />
+                  }
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl sm:text-2xl font-black truncate"
+                    style={{ color: "#f0f0ff", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.02em" }}>
+                    {saavn.songData?.name || "Summoning…"}
+                  </h2>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <Link href={`/search/${encodeURIComponent(saavn.songData?.artists?.primary?.[0]?.name || "")}`}
+                      className="text-sm font-semibold transition-colors" style={{ color: "#FF003C" }} onClick={onClose}>
+                      {saavn.songData?.artists?.primary?.[0]?.name || ""}
+                    </Link>
+                    {saavn.songData?.album?.name && (
+                      <><span style={{ color: "#44445a" }}>·</span>
+                      <span className="text-xs truncate max-w-[160px]" style={{ color: "#8888aa" }}>
+                        {saavn.songData.album.name}
+                      </span></>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
+                  <BtnRound onClick={downloadSaavn} title="Download to your realm"><Download className="w-4 h-4" /></BtnRound>
+                  <BtnRound onClick={() => {
+                    const url = `${window.location.origin}/${saavn.music}`;
+                    navigator.share?.({ url }) || navigator.clipboard?.writeText(url);
+                    toast("Link cast into the void!");
+                  }} title="Share"><Share2 className="w-4 h-4" /></BtnRound>
+                  {/* Watch on YouTube */}
+                  <BtnRound onClick={findYtForSaavn} title="Watch on YouTube" loading={saavnYtSearching}>
+                    <Video className="w-4 h-4" style={{ color: "#FF4444" }} />
+                  </BtnRound>
+                </div>
+              </div>
+
+              {/* Seek bar */}
+              <SeekBar progress={saavn.progress} onClick={seekSaavn}
+                timeLeft={saavn.formatTime(saavn.currentTime)} timeRight={saavn.formatTime(saavn.duration)} />
+
+              {/* Transport */}
+              <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                <CtrlBtn onClick={saavn.toggleLoop} active={saavn.isLooping} activeColor="#FF003C">
+                  {saavn.isLooping ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+                </CtrlBtn>
+                <CtrlBtn onClick={playSaavnPrev}><SkipBack className="w-5 h-5" /></CtrlBtn>
+                <BigPlayBtn playing={saavn.playing} onClick={saavn.togglePlay} />
+                <CtrlBtn onClick={playSaavnNext}><SkipForward className="w-5 h-5" /></CtrlBtn>
+                <CtrlBtn onClick={saavn.toggleMute} active={saavn.muted}>
+                  {saavn.muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </CtrlBtn>
+              </div>
+
+              {/* Volume */}
+              <VolumeSlider
+                value={saavn.muted ? 0 : saavn.volume}
+                muted={saavn.muted}
+                onChange={v => saavn.changeVolume(v)}
+                onToggle={saavn.toggleMute}
+              />
+            </>
+          )}
+
+          {/* ── YOUTUBE ── */}
+          {tab === "yt" && (
+            <>
+              {/* Audio/Video mode toggle */}
+              <div className="flex justify-center mb-4 flex-shrink-0">
+                <div className="flex rounded-xl overflow-hidden"
+                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(12,12,22,0.9)" }}>
+                  <TabBtn active={yt.ytMode === "audio"} onClick={() => { yt.setYtMode("audio"); hideIframeToBackground(); }} color="#FF003C">
+                    <Music2 className="w-3 h-3" /> Audio Only
+                  </TabBtn>
+                  <TabBtn active={yt.ytMode === "video"} onClick={() => yt.setYtMode("video")} color="#FF4444">
+                    <Video className="w-3 h-3" /> Video
+                  </TabBtn>
+                </div>
+              </div>
+
+              {/* Video slot — iframe gets positioned OVER this via CSS */}
+              {yt.ytMode === "video" && (
+                <div
+                  ref={videoSlotRef}
+                  className="w-full rounded-xl flex-shrink-0 mb-4 bg-black overflow-hidden"
+                  style={{ aspectRatio: "16/9", minHeight: "160px" }}
+                />
+              )}
+
+              {/* Audio mode: thumbnail */}
+              {yt.ytMode === "audio" && (
+                <div className="flex justify-center mb-5 flex-shrink-0">
+                  <div className="relative w-52 h-52 sm:w-60 sm:h-60 rounded-2xl overflow-hidden"
+                    style={{
+                      boxShadow: "0 0 50px rgba(255,30,0,0.4), 0 8px 40px rgba(0,0,0,0.8)",
+                      border:    "2px solid rgba(255,30,0,0.2)",
+                    }}>
+                    <img src={yt.currentVideo?.thumbnail} alt={yt.currentVideo?.title}
+                      className="w-full h-full object-cover" />
+                    {/* Audio-only overlay */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center"
+                      style={{ background: "rgba(0,0,0,0.55)" }}>
+                      <Music2 className="w-10 h-10 mb-2" style={{ color: "rgba(255,255,255,0.5)" }} />
+                      <span className="text-[9px] font-bold uppercase tracking-[0.2em]"
+                        style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Orbitron, sans-serif" }}>
+                        Audio Only
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* YT Info */}
+              <div className="flex items-start justify-between gap-2 mb-4 flex-shrink-0">
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg sm:text-xl font-black leading-snug line-clamp-2"
+                    style={{ color: "#f0f0ff", fontFamily: "Rajdhani, sans-serif" }}>
+                    {yt.currentVideo?.title || ""}
+                  </p>
+                  <p className="text-sm mt-1 truncate" style={{ color: "#8888aa" }}>
+                    {yt.currentVideo?.channelTitle || ""}
+                  </p>
+                </div>
+              </div>
+
+              {/* YT transport */}
+              <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                <CtrlBtn onClick={yt.toggleShuffle} active={yt.shuffle} activeColor="#FF003C">
+                  <Shuffle className="w-5 h-5" />
+                </CtrlBtn>
+                <CtrlBtn onClick={yt.prev}><SkipBack className="w-5 h-5" /></CtrlBtn>
+                <BigPlayBtn playing={yt.playing} onClick={yt.togglePlay} />
+                <CtrlBtn onClick={yt.next} dimmed={yt.queue.length === 0}><SkipForward className="w-5 h-5" /></CtrlBtn>
+                <CtrlBtn onClick={() => {
+                  const modes = ["none","one","all"];
+                  yt.setRepeat(modes[(modes.indexOf(yt.repeat)+1) % modes.length]);
+                }} active={yt.repeat !== "none"} activeColor="#FF003C">
+                  {yt.repeat === "one" ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+                </CtrlBtn>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* ══════════════ SAAVN TAB ══════════════ */}
-        {tab === "saavn" && (
-          <div className="flex flex-col flex-1 min-h-0 px-5 pb-5">
-            {/* Album art */}
-            <div className="flex justify-center mb-5 flex-shrink-0">
-              <div className="relative w-52 h-52 sm:w-60 sm:h-60 rounded-2xl overflow-hidden"
+        {/* ══════ RIGHT PANEL: Queue / Related ══════ */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+
+          {/* Tab bar */}
+          <div className="flex gap-1.5 px-5 py-3 flex-shrink-0"
+            style={{ borderBottom: "1px solid rgba(255,0,60,0.06)" }}>
+            {(tab === "saavn" ? ["related","queue","recent"] : ["queue","related"]).map(t => (
+              <button key={t}
+                onClick={() => tab === "saavn" ? setSaavnTab(t) : setYtTab(t)}
+                className="px-3 py-1.5 rounded-full transition-all"
                 style={{
-                  boxShadow: saavn.playing
-                    ? "0 0 50px rgba(255,0,60,0.4), 0 8px 40px rgba(0,0,0,0.7)"
-                    : "0 8px 40px rgba(0,0,0,0.7)",
-                  transition: "box-shadow 0.5s",
+                  fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem",
+                  fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                  background: (tab === "saavn" ? saavnTab : ytTab) === t ? "rgba(255,0,60,0.15)" : "transparent",
+                  border:     (tab === "saavn" ? saavnTab : ytTab) === t ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                  color:      (tab === "saavn" ? saavnTab : ytTab) === t ? "#FF003C" : "#44445a",
                 }}>
-                {saavn.isLoading
-                  ? <div className="remix-shimmer w-full h-full" />
-                  : <img src={saavn.songData?.image?.[2]?.url || ""} alt={saavn.songData?.name}
-                      className="w-full h-full object-cover"
-                      style={{ border: "1px solid rgba(255,0,60,0.15)" }} />
-                }
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="flex items-start justify-between gap-2 mb-3 flex-shrink-0">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-black truncate"
-                  style={{ color: "#f0f0ff", fontFamily: "Rajdhani, sans-serif" }}>
-                  {saavn.songData?.name || "Loading…"}
-                </h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Link href={`/search/${encodeURIComponent(saavn.songData?.artists?.primary?.[0]?.name || "")}`}
-                    className="text-sm font-semibold" style={{ color: "#FF003C" }} onClick={onClose}>
-                    {saavn.songData?.artists?.primary?.[0]?.name || ""}
-                  </Link>
-                  {saavn.songData?.album?.name && (
-                    <><span style={{ color: "#44445a" }}>·</span>
-                    <span className="text-xs truncate" style={{ color: "#8888aa" }}>{saavn.songData.album.name}</span></>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1.5 flex-shrink-0">
-                <button onClick={downloadSaavn}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: "#44445a", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={shareSaavn}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: "#44445a", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Share2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Seek bar */}
-            <div className="mb-2 flex-shrink-0">
-              <div className="relative w-full h-1 rounded-full cursor-pointer group"
-                style={{ background: "rgba(255,255,255,0.08)" }}
-                onClick={handleSaavnSeek}>
-                <div className="absolute left-0 top-0 h-full rounded-full"
-                  style={{
-                    width:      `${saavn.progress}%`,
-                    background: "linear-gradient(to right, #8B0000, #FF003C, #9D4EDD)",
-                    boxShadow:  "0 0 8px rgba(255,0,60,0.6)",
-                    transition: "width 0.1s linear",
-                  }} />
-                <div className="absolute top-1/2 w-3.5 h-3.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{
-                    left:       `calc(${saavn.progress}% - 7px)`,
-                    transform:  "translateY(-50%)",
-                    background: "#FF003C",
-                    boxShadow:  "0 0 10px rgba(255,0,60,0.9)",
-                  }} />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>
-                  {saavn.formatTime(saavn.currentTime)}
-                </span>
-                <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>
-                  {saavn.formatTime(saavn.duration)}
-                </span>
-              </div>
-            </div>
-
-            {/* Transport controls */}
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <button onClick={saavn.toggleLoop}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{
-                  color:      saavn.isLooping ? "#FF003C" : "#44445a",
-                  background: saavn.isLooping ? "rgba(255,0,60,0.1)" : "transparent",
-                  border:     saavn.isLooping ? "1px solid rgba(255,0,60,0.25)" : "1px solid transparent",
-                }}>
-                {saavn.isLooping ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+                {t === "queue"
+                  ? `Queue (${tab === "saavn" ? saavn.queue.length : yt.queue.length})`
+                  : t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
-              <button onClick={playSaavnPrev}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{ color: "#8888aa" }}>
-                <SkipBack className="w-5 h-5" />
-              </button>
-              {/* Big play */}
-              <button onClick={saavn.togglePlay}
-                className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90"
-                style={{
-                  background: "linear-gradient(135deg, #8B0000, #FF003C)",
-                  boxShadow:  saavn.playing
-                    ? "0 0 30px rgba(255,0,60,0.7), 0 0 60px rgba(255,0,60,0.3)"
-                    : "0 0 15px rgba(255,0,60,0.3)",
-                }}>
-                {saavn.playing
-                  ? <IoPause className="w-7 h-7 text-white" />
-                  : <IoPlay  className="w-7 h-7 text-white ml-1" />}
-              </button>
-              <button onClick={playSaavnNext}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{ color: (saavn.queue.length > 0 || saavnSugg.length > 0) ? "#8888aa" : "#2a2a3a" }}>
-                <SkipForward className="w-5 h-5" />
-              </button>
-              <button onClick={saavn.toggleMute}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{ color: saavn.muted ? "#44445a" : "#8888aa" }}>
-                {saavn.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {/* Volume */}
-            <div className="mb-4 flex-shrink-0">
-              <div className="relative w-full h-1 rounded-full cursor-pointer"
-                style={{ background: "rgba(255,255,255,0.08)" }}
-                onClick={e => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  saavn.changeVolume((e.clientX - rect.left) / rect.width);
-                }}>
-                <div className="h-full rounded-full"
-                  style={{
-                    width:      `${(saavn.muted ? 0 : saavn.volume) * 100}%`,
-                    background: "linear-gradient(to right, #7C3AED, #9D4EDD)",
-                  }} />
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1.5 mb-3 flex-shrink-0">
-              {["related", "queue", "recent"].map(t => (
-                <button key={t} onClick={() => setSaavnTab(t)}
-                  className="px-3 py-1 rounded-full transition-all"
-                  style={{
-                    fontFamily:    "Orbitron, sans-serif", fontSize: "0.55rem",
-                    fontWeight:    700, letterSpacing: "0.12em", textTransform: "uppercase",
-                    background:    saavnTab === t ? "rgba(255,0,60,0.15)" : "transparent",
-                    border:        saavnTab === t ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                    color:         saavnTab === t ? "#FF003C" : "#44445a",
-                  }}>
-                  {t === "queue" ? `Queue (${saavn.queue.length})` : t}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0">
-              {saavnTab === "related" && (
-                <>
-                  {saavnLoading && <ShimmerRows />}
-                  {!saavnLoading && saavnSugg.map(s => (
-                    <SongRow key={s.id}
-                      image={s.image?.[1]?.url} name={s.name}
-                      artist={s.artists?.primary?.[0]?.name}
-                      isCurrent={s.id === saavn.music}
-                      onPlay={() => saavn.playSong(s.id)}
-                      onQueue={() => saavn.setQueue(prev =>
-                        prev.find(q => (q?.id || q) === s.id) ? prev : [...prev, s]
-                      )} />
-                  ))}
-                </>
-              )}
-              {saavnTab === "queue" && (
-                <>
-                  {saavn.queue.length === 0 && <Empty text="Queue is empty" />}
-                  {saavn.queue.map((item, i) => {
-                    const id   = item?.id || item;
-                    const sugg = saavnSugg.find(s => s.id === id);
-                    return (
-                      <SongRow key={`q-${id}-${i}`}
-                        image={sugg?.image?.[1]?.url || item?.image?.[1]?.url}
-                        name={sugg?.name || item?.name || id}
-                        artist={sugg?.artists?.primary?.[0]?.name || item?.artists?.primary?.[0]?.name}
-                        isCurrent={id === saavn.music}
-                        index={i + 1}
-                        onPlay={() => {
-                          const rest = [...saavn.queue]; rest.splice(i, 1);
-                          saavn.setQueue(rest); saavn.playSong(id);
-                        }} />
-                    );
-                  })}
-                </>
-              )}
-              {saavnTab === "recent" && (
-                <>
-                  {saavn.recentlyPlayed.length === 0 && <Empty text="Nothing played yet" />}
-                  {saavn.recentlyPlayed.slice(0, 20).map(({ id }) => {
-                    const s = saavnSugg.find(x => x.id === id);
-                    return (
-                      <SongRow key={`rec-${id}`}
-                        image={s?.image?.[1]?.url} name={s?.name || id}
-                        artist={s?.artists?.primary?.[0]?.name}
-                        isCurrent={id === saavn.music}
-                        onPlay={() => saavn.playSong(id)} />
-                    );
-                  })}
-                </>
-              )}
-            </div>
+            ))}
           </div>
-        )}
 
-        {/* ══════════════ YOUTUBE TAB ══════════════ */}
-        {tab === "yt" && yt.currentVideo && (
-          <div className="flex flex-col flex-1 min-h-0">
-            {/* Audio/Video mode toggle */}
-            <div className="flex justify-center mb-2 px-5 flex-shrink-0">
-              <div className="flex gap-1 rounded-lg p-1"
-                style={{ background: "rgba(18,18,32,0.7)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                {["video", "audio"].map(m => (
-                  <button key={m} onClick={() => setYtMode(m)}
-                    className="flex items-center gap-1 px-3 py-1 rounded text-xs font-bold transition-all"
-                    style={{
-                      fontFamily:    "Orbitron, sans-serif",
-                      letterSpacing: "0.06em",
-                      background:    ytMode === m ? "rgba(255,0,0,0.2)" : "transparent",
-                      color:         ytMode === m ? "#FF4444" : "#44445a",
-                      border:        ytMode === m ? "1px solid rgba(255,0,0,0.3)" : "1px solid transparent",
-                    }}>
-                    {m === "video" ? <Video className="w-3 h-3" /> : <Music className="w-3 h-3" />}
-                    {m === "video" ? "Video" : "Audio Only"}
-                  </button>
+          {/* List */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
+
+            {tab === "saavn" && saavnTab === "related" && (
+              <>
+                {saavnLoad && <Shimmer />}
+                {!saavnLoad && saavnSugg.length === 0 && <EmptyState text="No souls found in the void" />}
+                {!saavnLoad && saavnSugg.map(s => (
+                  <SongRow key={s.id} image={s.image?.[1]?.url} name={s.name}
+                    artist={s.artists?.primary?.[0]?.name} isCurrent={s.id === saavn.music}
+                    onPlay={() => saavn.playSong(s.id)}
+                    onQueue={() => saavn.setQueue(prev =>
+                      prev.find(q => (q?.id||q) === s.id) ? prev : [...prev, s])} />
                 ))}
-              </div>
-            </div>
-
-            {/* Video iframe */}
-            {ytMode === "video" && (
-              <div className="flex-shrink-0 w-full" style={{ aspectRatio: "16/9", background: "#000" }}>
-                <iframe
-                  key={yt.currentVideo.id}
-                  src={`https://www.youtube.com/embed/${yt.currentVideo.id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                  title={yt.currentVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full"
-                  style={{ border: "none" }}
-                />
-              </div>
+              </>
             )}
 
-            {/* Audio-only thumbnail */}
-            {ytMode === "audio" && (
-              <div className="flex justify-center py-2 flex-shrink-0">
-                <div className="w-44 h-44 rounded-2xl overflow-hidden relative"
-                  style={{ boxShadow: "0 0 40px rgba(255,0,0,0.3)", border: "1px solid rgba(255,0,0,0.2)" }}>
-                  <img src={yt.currentVideo.thumbnail} alt={yt.currentVideo.title}
-                    className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.4)" }}>
-                    <Music className="w-10 h-10" style={{ color: "rgba(255,255,255,0.7)" }} />
-                  </div>
-                  {/* Hidden iframe for audio-only (still loads YT audio) */}
-                  <iframe
-                    key={`audio-${yt.currentVideo.id}`}
-                    src={`https://www.youtube.com/embed/${yt.currentVideo.id}?autoplay=1&rel=0&controls=0`}
-                    title="audio"
-                    allow="autoplay"
-                    className="absolute w-0 h-0 opacity-0 pointer-events-none"
-                    style={{ border: "none" }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Info + controls */}
-            <div className="flex-shrink-0 px-5 pt-3 pb-2">
-              <div className="flex items-start gap-2 mb-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-bold leading-snug line-clamp-2"
-                    style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
-                    {yt.currentVideo.title}
-                  </p>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>{yt.currentVideo.channelTitle}</p>
-                </div>
-              </div>
-              {/* YT transport */}
-              <div className="flex items-center justify-around">
-                <button onClick={yt.toggleShuffle}
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ color: yt.shuffle ? "#FF003C" : "#44445a", background: yt.shuffle ? "rgba(255,0,60,0.08)" : "transparent" }}>
-                  <Shuffle className="w-4 h-4" />
-                </button>
-                <button onClick={yt.prev}
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: yt.history.length > 0 ? "#8888aa" : "#2a2a3a" }}>
-                  <SkipBack className="w-5 h-5" />
-                </button>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #8B0000, #FF003C)", boxShadow: "0 0 20px rgba(255,0,60,0.5)" }}>
-                  <IoPlay className="w-6 h-6 text-white ml-0.5" />
-                </div>
-                <button onClick={yt.next}
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: yt.queue.length > 0 ? "#8888aa" : "#2a2a3a" }}>
-                  <SkipForward className="w-5 h-5" />
-                </button>
-                <button onClick={() => {
-                  const modes = ["none","one","all"];
-                  yt.setRepeat(modes[(modes.indexOf(yt.repeat) + 1) % modes.length]);
-                }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ color: yt.repeat !== "none" ? "#FF003C" : "#44445a", background: yt.repeat !== "none" ? "rgba(255,0,60,0.08)" : "transparent" }}>
-                  {yt.repeat === "one" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1.5 px-5 mb-3 flex-shrink-0">
-              {["queue","related"].map(t => (
-                <button key={t} onClick={() => setYtTab(t)}
-                  className="px-3 py-1 rounded-full transition-all"
-                  style={{
-                    fontFamily:    "Orbitron, sans-serif", fontSize: "0.55rem",
-                    fontWeight:    700, letterSpacing: "0.12em", textTransform: "uppercase",
-                    background:    ytTab === t ? "rgba(255,0,0,0.15)" : "transparent",
-                    border:        ytTab === t ? "1px solid rgba(255,0,0,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                    color:         ytTab === t ? "#FF4444" : "#44445a",
-                  }}>
-                  {t === "queue" ? `Queue (${yt.queue.length})` : "Related"}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto px-5 space-y-1.5 pb-4 min-h-0">
-              {ytTab === "queue" && (
-                <>
-                  {yt.queue.length === 0 && <Empty text="Queue empty — add videos with +" />}
-                  {yt.queue.map((item, i) => item && (
-                    <YTRow key={`ytq-${item.id}-${i}`} item={item}
-                      isActive={yt.currentVideo.id === item.id}
-                      index={i + 1}
+            {tab === "saavn" && saavnTab === "queue" && (
+              <>
+                {saavn.queue.length === 0 && <EmptyState text="The queue lies empty — add souls to fill it" />}
+                {saavn.queue.map((item, i) => {
+                  const id   = item?.id || item;
+                  const sugg = saavnSugg.find(s => s.id === id);
+                  return (
+                    <SongRow key={`q-${id}-${i}`}
+                      image={sugg?.image?.[1]?.url || item?.image?.[1]?.url}
+                      name={sugg?.name || item?.name || id}
+                      artist={sugg?.artists?.primary?.[0]?.name || item?.artists?.primary?.[0]?.name}
+                      isCurrent={id === saavn.music} index={i+1}
                       onPlay={() => {
-                        const rest = yt.queue.filter((_, j) => j !== i);
-                        yt.setQueue(rest);
-                        yt.playVideo(item);
-                      }}
-                      onRemove={() => yt.removeFromQueue(i)} />
-                  ))}
-                </>
-              )}
-              {ytTab === "related" && (
-                <>
-                  {ytLoading && <ShimmerRows />}
-                  {!ytLoading && ytRelated.map(item => item && (
-                    <YTRow key={`ytr-${item.id}`} item={item}
-                      isActive={yt.currentVideo.id === item.id}
-                      onPlay={() => yt.playVideo(item)}
-                      onQueue={() => yt.addToQueue(item)} />
-                  ))}
-                </>
-              )}
-            </div>
+                        const rest = [...saavn.queue]; rest.splice(i,1);
+                        saavn.setQueue(rest); saavn.playSong(id);
+                      }} />
+                  );
+                })}
+              </>
+            )}
+
+            {tab === "saavn" && saavnTab === "recent" && (
+              <>
+                {saavn.recentlyPlayed?.length === 0 && <EmptyState text="Your past is as dark as the void — play something" />}
+                {saavn.recentlyPlayed?.slice(0,25).map(({ id }) => {
+                  const s = saavnSugg.find(x => x.id === id);
+                  return (
+                    <SongRow key={`rec-${id}`} image={s?.image?.[1]?.url}
+                      name={s?.name || id} artist={s?.artists?.primary?.[0]?.name}
+                      isCurrent={id === saavn.music} onPlay={() => saavn.playSong(id)} />
+                  );
+                })}
+              </>
+            )}
+
+            {tab === "yt" && ytTab === "queue" && (
+              <>
+                {yt.queue.length === 0 && <EmptyState text="Queue is barren — summon videos with +" />}
+                {yt.queue.map((item, i) => item && (
+                  <YTRow key={`ytq-${item.id}-${i}`} item={item}
+                    isActive={yt.currentVideo?.id === item.id} index={i+1}
+                    onPlay={() => { yt.setQueue(yt.queue.filter((_,j) => j!==i)); yt.playVideo(item); }}
+                    onRemove={() => yt.removeFromQueue(i)} />
+                ))}
+              </>
+            )}
+
+            {tab === "yt" && ytTab === "related" && (
+              <>
+                {ytLoad && <Shimmer />}
+                {!ytLoad && ytRelated.length === 0 && <EmptyState text="No related souls found" />}
+                {!ytLoad && ytRelated.map(item => item && (
+                  <YTRow key={`ytr-${item.id}`} item={item}
+                    isActive={yt.currentVideo?.id === item.id}
+                    onPlay={() => yt.playVideo(item)}
+                    onQueue={() => { yt.addToQueue(item); toast("Added to the queue of the damned"); }} />
+                ))}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
+// ── Small reusable components ─────────────────────────────────────────────────
+
+function TabBtn({ active, onClick, color, children }) {
+  return (
+    <button onClick={onClick}
+      className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-all"
+      style={{
+        fontFamily:  "Orbitron, sans-serif", letterSpacing: "0.08em",
+        background:  active ? `${color}22` : "transparent",
+        color:       active ? color : "#44445a",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function BtnRound({ onClick, title, loading, children }) {
+  return (
+    <button onClick={onClick} title={title}
+      className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+      style={{ color: loading ? "#FF003C" : "#44445a", border: "1px solid rgba(255,255,255,0.06)" }}>
+      {children}
+    </button>
+  );
+}
+
+function CtrlBtn({ onClick, active, activeColor = "#FF003C", dimmed, children }) {
+  return (
+    <button onClick={onClick}
+      className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
+      style={{
+        color:      active ? activeColor : dimmed ? "#2a2a3a" : "#8888aa",
+        background: active ? `${activeColor}18` : "transparent",
+        border:     active ? `1px solid ${activeColor}44` : "1px solid rgba(255,255,255,0.06)",
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function BigPlayBtn({ playing, onClick }) {
+  return (
+    <button onClick={onClick}
+      className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90"
+      style={{
+        background: "linear-gradient(135deg, #8B0000, #FF003C)",
+        boxShadow:  playing
+          ? "0 0 35px rgba(255,0,60,0.7), 0 0 70px rgba(255,0,60,0.3)"
+          : "0 0 18px rgba(255,0,60,0.3)",
+        transition: "box-shadow 0.3s",
+      }}>
+      {playing
+        ? <IoPause className="w-7 h-7 text-white" />
+        : <IoPlay  className="w-7 h-7 text-white ml-1" />}
+    </button>
+  );
+}
+
+function SeekBar({ progress, onClick, timeLeft, timeRight }) {
+  return (
+    <div className="mb-4 flex-shrink-0">
+      <div className="relative w-full h-1.5 rounded-full cursor-pointer group"
+        style={{ background: "rgba(255,255,255,0.08)" }} onClick={onClick}>
+        <div className="absolute left-0 top-0 h-full rounded-full pointer-events-none"
+          style={{
+            width:      `${progress}%`,
+            background: "linear-gradient(to right, #8B0000, #FF003C, #9D4EDD)",
+            boxShadow:  "0 0 8px rgba(255,0,60,0.6)",
+            transition: "width 0.1s linear",
+          }} />
+        <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ left: `calc(${progress}% - 7px)`, background: "#FF003C", boxShadow: "0 0 10px rgba(255,0,60,0.9)" }} />
+      </div>
+      <div className="flex justify-between mt-1.5">
+        <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeLeft}</span>
+        <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeRight}</span>
+      </div>
+    </div>
+  );
+}
+
+function VolumeSlider({ value, muted, onChange, onToggle }) {
+  return (
+    <div className="flex items-center gap-3 mb-2 flex-shrink-0">
+      <button onClick={onToggle}
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
+        style={{ color: muted ? "#44445a" : "#8888aa", border: "1px solid rgba(255,255,255,0.06)" }}>
+        {muted || value === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+      </button>
+      <div className="flex-1 relative h-1.5 rounded-full cursor-pointer group"
+        style={{ background: "rgba(255,255,255,0.08)" }}
+        onClick={e => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          onChange((e.clientX - rect.left) / rect.width);
+        }}>
+        <div className="h-full rounded-full"
+          style={{
+            width:      `${value * 100}%`,
+            background: "linear-gradient(to right, #7C3AED, #9D4EDD)",
+            transition: "width 0.1s",
+          }} />
+        <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ left: `calc(${value * 100}% - 7px)`, background: "#9D4EDD" }} />
+      </div>
+    </div>
+  );
+}
 
 function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
   return (
     <button onClick={onPlay}
-      className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all duration-200 group"
+      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 group"
       style={{
         background: isCurrent ? "rgba(255,0,60,0.1)" : "rgba(18,18,32,0.5)",
         border:     isCurrent ? "1px solid rgba(255,0,60,0.25)" : "1px solid rgba(255,255,255,0.04)",
@@ -609,20 +636,17 @@ function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
           {isCurrent ? "▶" : index}
         </span>
       )}
-      <img src={image || ""} alt={name}
-        className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+      <img src={image || ""} alt={name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
         style={{ background: "rgba(18,18,32,0.8)" }} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate"
-          style={{ color: isCurrent ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
-          {name}
-        </p>
+          style={{ color: isCurrent ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{name}</p>
         {artist && <p className="text-xs truncate" style={{ color: "#8888aa" }}>{artist}</p>}
       </div>
       {onQueue && (
         <button onClick={e => { e.stopPropagation(); onQueue(); }}
-          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: "#9D4EDD" }}>
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: "#9D4EDD", border: "1px solid rgba(157,78,221,0.3)" }}>
           <Plus className="w-3 h-3" />
         </button>
       )}
@@ -633,10 +657,10 @@ function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
 function YTRow({ item, isActive, index, onPlay, onQueue, onRemove }) {
   return (
     <button onClick={onPlay}
-      className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all duration-200 group"
+      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 group"
       style={{
-        background: isActive ? "rgba(255,0,0,0.1)" : "rgba(18,18,32,0.5)",
-        border:     isActive ? "1px solid rgba(255,0,0,0.25)" : "1px solid rgba(255,255,255,0.04)",
+        background: isActive ? "rgba(255,30,0,0.1)" : "rgba(18,18,32,0.5)",
+        border:     isActive ? "1px solid rgba(255,30,0,0.25)" : "1px solid rgba(255,255,255,0.04)",
       }}
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(24,24,40,0.9)"; }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "rgba(18,18,32,0.5)"; }}>
@@ -647,41 +671,40 @@ function YTRow({ item, isActive, index, onPlay, onQueue, onRemove }) {
         </span>
       )}
       <img src={item.thumbnail || ""} alt={item.title}
-        className="w-[52px] h-[29px] rounded-md object-cover flex-shrink-0"
+        className="w-[56px] h-[32px] rounded object-cover flex-shrink-0"
         style={{ background: "rgba(18,18,32,0.8)" }} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold line-clamp-1"
-          style={{ color: isActive ? "#FF4444" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
-          {item.title}
-        </p>
+          style={{ color: isActive ? "#FF4444" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
         <p className="text-[10px] truncate" style={{ color: "#8888aa" }}>{item.channelTitle}</p>
       </div>
-      {onQueue && (
-        <button onClick={e => { e.stopPropagation(); onQueue(); toast("Added to queue"); }}
-          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: "#9D4EDD" }}>
-          <Plus className="w-3 h-3" />
-        </button>
-      )}
-      {onRemove && (
-        <button onClick={e => { e.stopPropagation(); onRemove(); }}
-          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: "#FF4444" }}>
-          <X className="w-3 h-3" />
-        </button>
-      )}
+      <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onQueue && (
+          <button onClick={e => { e.stopPropagation(); onQueue(); }}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ color: "#9D4EDD", border: "1px solid rgba(157,78,221,0.3)" }}>
+            <Plus className="w-3 h-3" />
+          </button>
+        )}
+        {onRemove && (
+          <button onClick={e => { e.stopPropagation(); onRemove(); }}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ color: "#FF4444", border: "1px solid rgba(255,30,0,0.3)" }}>
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
     </button>
   );
 }
 
-function ShimmerRows() {
+function Shimmer() {
   return (
-    <div className="space-y-1.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl"
-          style={{ background: "rgba(18,18,32,0.4)" }}>
-          <div className="remix-shimmer w-9 h-9 rounded-lg flex-shrink-0" />
-          <div className="flex-1 space-y-1.5">
+    <div className="space-y-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: "rgba(18,18,32,0.4)" }}>
+          <div className="remix-shimmer w-10 h-10 rounded-lg flex-shrink-0" />
+          <div className="flex-1 space-y-2">
             <div className="remix-shimmer h-3 w-4/5 rounded" />
             <div className="remix-shimmer h-2.5 w-3/5 rounded" />
           </div>
@@ -691,6 +714,12 @@ function ShimmerRows() {
   );
 }
 
-function Empty({ text }) {
-  return <p className="text-xs text-center py-8" style={{ color: "#44445a" }}>{text}</p>;
+function EmptyState({ text }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <p className="text-xs leading-relaxed max-w-[200px]" style={{ color: "#44445a", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+        {text}
+      </p>
+    </div>
+  );
 }
