@@ -86,6 +86,8 @@ export default function MusicProvider({ children }) {
     setCurrentTime(0);
     setDuration(0);
     setPlaying(true); // will autoplay once URL is set
+    // Pause YouTube when Saavn starts
+    window.dispatchEvent(new CustomEvent("arise:saavn:playing"));
 
     // Persist
     try {
@@ -242,8 +244,8 @@ export default function MusicProvider({ children }) {
         setPlaying(false);
       }
     };
-    window.addEventListener("remix:yt:playing", handler);
-    return () => window.removeEventListener("remix:yt:playing", handler);
+    window.addEventListener("arise:yt:playing", handler);
+    return () => window.removeEventListener("arise:yt:playing", handler);
   }, []);
 
   // ── Global keyboard shortcuts ──────────────────────────
