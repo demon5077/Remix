@@ -1,72 +1,106 @@
-# MusicHub
+<div align="center">
+  <img src="/public/arise-logo.svg" width="80" height="80" alt="Arise" />
+  <h1>Arise</h1>
+  <p><strong>Unleash the Sound from the Abyss</strong></p>
+  <p>A dark, demon-themed music streaming app powered by JioSaavn + YouTube.</p>
 
-MusicHub is a web music app built using Next.js 14, App Router, and an unofficial music API. The user interface is styled with Tailwind CSS.
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
+  [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev)
+  [![License](https://img.shields.io/badge/License-Educational-red)](LICENSE)
+</div>
 
-[![Follow me](https://img.shields.io/github/followers/r2hu1?style=social)](https://github.com/r2hu1)
-[![Star this Repo](https://img.shields.io/github/stars/r2hu1/musichub?style=social)](https://github.com/r2hu1/musichub)
-
-<br/>
-
-![Homepage](/public/feed.png)
+---
 
 ## Features
 
-- Browse and listen to a wide variety of music.
-- Light and Dark mode for user preference.
-- Search for your favorite artists, albums, and tracks.
-- Enjoy a seamless music listening experience.
+- 🎵 **JioSaavn streaming** — millions of songs, albums & artists
+- 🔴 **YouTube integration** — search, stream audio or video from YouTube
+- 🎭 **Unified player** — one bar controls both Saavn audio & YouTube
+- 🎬 **Audio/Video toggle** — switch between audio-only and video for YouTube
+- 📋 **Playlist import** — connect Google/Spotify and import your playlists
+- 🔒 **OAuth login** — Google (YouTube) and Spotify authentication
+- 🌑 **Devil/Demon theme** — immersive dark aesthetic throughout
+- 📱 **PWA ready** — installable on iOS & Android
+- ⌨️ **Keyboard shortcuts** — Space (play/pause), M (mute), L (loop)
 
 ## Screenshots
 
-### Homepage
+| Home | Player | Playlists |
+|------|--------|-----------|
+| ![Home](public/feed.png) | ![Player](public/player-1.png) | ![Playlists](public/search-feed.png) |
 
-![Homepage](/public/feed.png)
+## Setup
 
-### Search Page
-
-![Search Page](/public/search-feed.png)
-
-### Album Page
-
-![Album Page](/public/album.png)
-
-### Music Page
-
-Player
-
-![Music Page](/public/player-1.png)
-
-Mobile Player
-
-![Music Page](/public/player-2.png)
-
-## Installation
-
-1. Clone the repository:
+### 1. Clone & install
 
 ```bash
-git clone https://github.com/r2hu1/musichub.git
-cd musichub
+git clone <your-repo>
+cd arise
+npm install
 ```
 
-2. Install dependencies:
+### 2. Configure environment
 
 ```bash
-npm install or pnpm install
+cp .env.example .env.local
+# Edit .env.local with your API keys
 ```
 
-3. Run the development server:
+### 3. Required keys
+
+| Key | Where to get it |
+|-----|----------------|
+| `NEXT_PUBLIC_RAPIDAPI_KEY` | [rapidapi.com/ytjar/api/yt-api](https://rapidapi.com/ytjar/api/yt-api) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | [Google Cloud Console](https://console.cloud.google.com) |
+| `NEXT_PUBLIC_SPOTIFY_CLIENT_ID` + `SPOTIFY_CLIENT_SECRET` | [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) |
+
+### 4. Run
 
 ```bash
-npm run dev or pnpm run dev
+npm run dev
+# Open http://localhost:3000
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) in your browser to explore MusicHub.
+## OAuth Setup
 
-## Setup Api
+### Google (YouTube playlists)
 
-fork and deploy your own repo of `https://github.com/sumitkolhe/jiosaavn-api` get the deployment url and paste in .env file refer .env.example
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com)
+2. Enable **YouTube Data API v3**
+3. Create **OAuth 2.0 Client ID** (Web Application)
+4. Add redirect URI: `http://localhost:3000/api/auth/google/callback`
 
-## License
+### Spotify (playlist import)
 
-This project is licensed under the [MIT License](LICENSE).
+1. Create an app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
+2. Settings → Redirect URIs → Add: `http://localhost:3000/api/auth/spotify/callback`
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **UI**: React 19, Tailwind CSS, Radix UI, Lucide Icons
+- **Audio**: JioSaavn unofficial API via [saavn.sumit.co](https://saavn.sumit.co)
+- **Video**: YouTube Embed + IFrame API via RapidAPI
+- **Auth**: Google OAuth 2.0 + Spotify OAuth 2.0
+- **Deployment**: Vercel
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Play / Pause |
+| `M` | Mute / Unmute |
+| `L` | Toggle Loop |
+| `Shift + →` | Skip forward 10s |
+| `Shift + ←` | Skip back 10s |
+
+## Legal
+
+This app is for **educational purposes only**. It uses unofficial/public APIs.  
+All music rights belong to their respective owners.
+
+---
+
+<div align="center">
+  Made with 🔥 by the Arise team
+</div>

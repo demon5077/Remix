@@ -1,19 +1,18 @@
 "use client";
 /**
- * YTProvider — manages YouTube playback.
+ * YTProvider — YouTube playback engine for Arise.
  *
  * KEY ARCHITECTURE:
- * - The <iframe> lives in a FIXED div that is ALWAYS in the DOM (never moved, never unmounted)
- * - Audio-only mode: same iframe, we just hide the fixed div with CSS (audio keeps playing)
- * - Video mode: we show the fixed div OR clone its position into the modal slot via CSS
- * - This is the only way to guarantee audio never stops
+ * - ONE fixed container div holds the iframe. NEVER moves, NEVER unmounts.
+ * - Audio mode: container is 1×1px invisible — browser keeps playing audio.
+ * - Video mode: container's CSS is set to cover the slot element's bounding rect.
+ * - Switching modes is pure CSS, no DOM detachment = no audio interruption.
  *
- * Mutual exclusion: when YT starts playing, it pauses Saavn via window event.
- * When Saavn starts playing, YT gets paused via the same mechanism.
+ * MUTUAL EXCLUSION:
+ * - YT plays → "arise:yt:playing" event → Saavn pauses
+ * - Saavn plays → "arise:saavn:playing" event → YT pauses
  */
-import {
-  createContext, useContext, useCallback, useReducer, useRef, useEffect, useState,
-} from "react";
+import { createContext, useContext, useCallback, useReducer, useRef, useEffect, useState } from "react";
 
 const initial = {
   currentVideo: null,
@@ -22,7 +21,7 @@ const initial = {
   playing:      false,
   shuffle:      false,
   repeat:       "none",
-  ytMode:       "audio", // "audio" | "video" — default is AUDIO for music streaming
+  ytMode:       "audio",   // "audio" | "video" — audio default for music app
 };
 
 function reducer(state, action) {
@@ -34,12 +33,12 @@ function reducer(state, action) {
         ? [state.currentVideo, ...state.history.filter(h => h.id !== state.currentVideo.id)].slice(0, 50)
         : state.history;
       try {
-        const rec = JSON.parse(localStorage.getItem("remix:yt:recent") || "[]");
-        localStorage.setItem("remix:yt:recent", JSON.stringify(
+        const rec = JSON.parse(localStorage.getItem("arise:yt:recent") || "[]");
+        localStorage.setItem("arise:yt:recent", JSON.stringify(
           [{ id: v.id, title: v.title, thumbnail: v.thumbnail, channelTitle: v.channelTitle, ts: Date.now() },
             ...rec.filter(r => r.id !== v.id)].slice(0, 50)
         ));
-        localStorage.setItem("remix:yt:last", v.id);
+        localStorage.setItem("arise:yt:last", v.id);
       } catch {}
       return { ...state, currentVideo: v, playing: true, history };
     }
@@ -58,9 +57,8 @@ function reducer(state, action) {
         ? state.queue[Math.floor(Math.random() * state.queue.length)]
         : state.queue[0];
       return {
-        ...state,
-        currentVideo: pick,
-        queue: state.queue.filter(v => v.id !== pick.id),
+        ...state, currentVideo: pick,
+        queue:   state.queue.filter(v => v.id !== pick.id),
         history: state.currentVideo ? [state.currentVideo, ...state.history].slice(0, 50) : state.history,
         playing: true,
       };
@@ -84,29 +82,39 @@ function reducer(state, action) {
 export const YTContext = createContext(null);
 export const useYT = () => useContext(YTContext);
 
-// Global ref so the iframe container div can be accessed outside React
-let _iframeContainerRef = null;
-
 export function YTProvider({ children }) {
-  const [state, dispatch]     = useReducer(reducer, initial);
-  const iframeRef             = useRef(null);
-  const containerRef          = useRef(null); // the always-mounted fixed div
-  const [iframeKey, setIframeKey] = useState(0); // force remount on new video
+  const [state, dispatch]      = useReducer(reducer, initial);
+  const iframeRef              = useRef(null);
+  const containerRef           = useRef(null);
+  const [videoId, setVideoId]  = useState(null);
+  const [ytVolume, setYtVolume]= useState(1);   // YT volume 0-1
+  const [ytMuted,  setYtMuted] = useState(false);
 
-  // Keep global ref in sync
-  useEffect(() => { _iframeContainerRef = containerRef.current; }, []);
-
-  // ── postMessage YT API control ─────────────────────────────────
+  // postMessage command helper
   const ytCmd = useCallback((cmd, args = []) => {
     try {
       iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func: cmd, args }),
-        "*"
+        JSON.stringify({ event: "command", func: cmd, args }), "*"
       );
     } catch {}
   }, []);
 
-  // Listen for YT iframe API state events
+  // Volume control (YT iframe API)
+  const changeYtVolume = useCallback((v) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    setYtVolume(clamped);
+    setYtMuted(clamped === 0);
+    ytCmd("setVolume", [Math.round(clamped * 100)]);
+    if (clamped === 0) ytCmd("mute"); else ytCmd("unMute");
+  }, [ytCmd]);
+
+  const toggleYtMute = useCallback(() => {
+    const next = !ytMuted;
+    setYtMuted(next);
+    if (next) ytCmd("mute"); else ytCmd("unMute");
+  }, [ytMuted, ytCmd]);
+
+  // YT iframe → React state sync
   useEffect(() => {
     const handler = (e) => {
       try {
@@ -114,137 +122,157 @@ export function YTProvider({ children }) {
         if (data?.event === "onStateChange") {
           if (data.info === 1) dispatch({ type: "SET_PLAYING", payload: true  });
           if (data.info === 2) dispatch({ type: "SET_PLAYING", payload: false });
-          if (data.info === 0) { // ended
+          if (data.info === 0) {
             dispatch({ type: "SET_PLAYING", payload: false });
             dispatch({ type: "NEXT" });
           }
+        }
+        // Set initial volume after iframe ready
+        if (data?.event === "onReady") {
+          ytCmd("setVolume", [Math.round(ytVolume * 100)]);
         }
       } catch {}
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, []);
+  }, [ytCmd, ytVolume]);
 
-  // ── Mutual exclusion: pause Saavn when YT plays ────────────────
+  // Mutual exclusion — pause when Saavn fires
+  useEffect(() => {
+    const handler = () => {
+      ytCmd("pauseVideo");
+      dispatch({ type: "SET_PLAYING", payload: false });
+    };
+    window.addEventListener("arise:saavn:playing", handler);
+    return () => window.removeEventListener("arise:saavn:playing", handler);
+  }, [ytCmd]);
+
+  // When YT plays → pause Saavn
   useEffect(() => {
     if (state.playing && state.currentVideo) {
-      window.dispatchEvent(new CustomEvent("remix:yt:playing"));
+      window.dispatchEvent(new CustomEvent("arise:yt:playing"));
     }
   }, [state.playing, state.currentVideo]);
 
-  // ── When video changes, remount iframe ─────────────────────────
+  // When video changes → update iframe src (key-based remount via videoId)
   useEffect(() => {
-    if (state.currentVideo) setIframeKey(k => k + 1);
+    setVideoId(state.currentVideo ? state.currentVideo.id : null);
   }, [state.currentVideo?.id]);
 
-  // ── Public API ─────────────────────────────────────────────────
+  // Public API
   const playVideo   = useCallback((v) => dispatch({ type: "PLAY", payload: v }), []);
   const ytPlay      = useCallback(() => { ytCmd("playVideo");  dispatch({ type: "SET_PLAYING", payload: true  }); }, [ytCmd]);
   const ytPause     = useCallback(() => { ytCmd("pauseVideo"); dispatch({ type: "SET_PLAYING", payload: false }); }, [ytCmd]);
-  const togglePlay  = useCallback(() => {
-    if (state.playing) ytPause(); else ytPlay();
-  }, [state.playing, ytPlay, ytPause]);
-  const next           = useCallback(() => dispatch({ type: "NEXT" }), []);
-  const prev           = useCallback(() => dispatch({ type: "PREV" }), []);
-  const addToQueue     = useCallback((v) => dispatch({ type: "ADD_TO_QUEUE", payload: v }), []);
-  const setQueue       = useCallback((q) => dispatch({ type: "SET_QUEUE", payload: q }), []);
-  const removeFromQueue= useCallback((i) => dispatch({ type: "REMOVE_FROM_QUEUE", payload: i }), []);
-  const toggleShuffle  = useCallback(() => dispatch({ type: "TOGGLE_SHUFFLE" }), []);
-  const stop           = useCallback(() => { ytCmd("pauseVideo"); dispatch({ type: "STOP" }); }, [ytCmd]);
-  const setRepeat      = useCallback((r) => dispatch({ type: "SET_REPEAT", payload: r }), []);
-  const setYtMode      = useCallback((m) => dispatch({ type: "SET_YT_MODE", payload: m }), []);
+  const togglePlay  = useCallback(() => { if (state.playing) ytPause(); else ytPlay(); }, [state.playing, ytPlay, ytPause]);
+  const next        = useCallback(() => dispatch({ type: "NEXT" }), []);
+  const prev        = useCallback(() => dispatch({ type: "PREV" }), []);
+  const addToQueue  = useCallback((v) => dispatch({ type: "ADD_TO_QUEUE", payload: v }), []);
+  const setQueue    = useCallback((q) => dispatch({ type: "SET_QUEUE", payload: q }), []);
+  const removeFromQueue = useCallback((i) => dispatch({ type: "REMOVE_FROM_QUEUE", payload: i }), []);
+  const toggleShuffle   = useCallback(() => dispatch({ type: "TOGGLE_SHUFFLE" }), []);
+  const stop        = useCallback(() => {
+    ytCmd("pauseVideo");
+    dispatch({ type: "STOP" });
+    setVideoId(null);
+    hideIframeContainer();
+  }, [ytCmd]);
+  const setRepeat   = useCallback((r) => dispatch({ type: "SET_REPEAT", payload: r }), []);
+  const setYtMode   = useCallback((m) => {
+    dispatch({ type: "SET_YT_MODE", payload: m });
+    if (m === "audio") hideIframeContainer();
+  }, []);
 
-  const getLiked  = useCallback(() => { try { return JSON.parse(localStorage.getItem("remix:yt:likes") || "[]"); } catch { return []; } }, []);
-  const toggleLike= useCallback((video) => {
+  const getLiked   = useCallback(() => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]"); } catch { return []; } }, []);
+  const toggleLike = useCallback((video) => {
     try {
-      const likes = JSON.parse(localStorage.getItem("remix:yt:likes") || "[]");
-      localStorage.setItem("remix:yt:likes", JSON.stringify(
+      const likes = JSON.parse(localStorage.getItem("arise:yt:likes") || "[]");
+      localStorage.setItem("arise:yt:likes", JSON.stringify(
         likes.find(v => v.id === video.id) ? likes.filter(v => v.id !== video.id) : [video, ...likes]
       ));
     } catch {}
   }, []);
-  const isLiked   = useCallback((id) => { try { return JSON.parse(localStorage.getItem("remix:yt:likes") || "[]").some(v => v.id === id); } catch { return false; } }, []);
-  const getRecent = useCallback(() => { try { return JSON.parse(localStorage.getItem("remix:yt:recent") || "[]"); } catch { return []; } }, []);
-
-  const isAudio = state.ytMode === "audio";
-  const isVideo = state.ytMode === "video";
+  const isLiked    = useCallback((id) => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").some(v => v.id === id); } catch { return false; } }, []);
+  const getRecent  = useCallback(() => { try { return JSON.parse(localStorage.getItem("arise:yt:recent") || "[]"); } catch { return []; } }, []);
 
   return (
     <YTContext.Provider value={{
-      ...state,
-      iframeRef, containerRef,
+      ...state, iframeRef, containerRef,
+      ytVolume, ytMuted, changeYtVolume, toggleYtMute,
       playVideo, togglePlay, ytPlay, ytPause,
       next, prev, addToQueue, setQueue, removeFromQueue,
       toggleShuffle, stop, setRepeat, setYtMode,
       getLiked, toggleLike, isLiked, getRecent,
     }}>
       {/*
-        FIXED IFRAME CONTAINER — always mounted, never moves.
-        - Audio mode: position fixed but off-screen visually (opacity 0, 1x1px)
-          but browser still plays audio because it's in the DOM
-        - Video mode (in modal): we use CSS to make it cover the slot element
-        The iframe is NEVER detached from the DOM. Moving it would reset playback.
+        FIXED CONTAINER — always in DOM, never moved.
+        Audio: 1×1px, opacity 0 → audio keeps playing silently
+        Video: JS sets top/left/width/height to cover the modal slot
       */}
       <div
         ref={containerRef}
-        id="yt-iframe-container"
+        id="arise-yt-container"
         style={{
-          position:  "fixed",
-          // Default: off-screen (audio-only mode or modal closed)
-          // The modal overrides these via an inline style on this element
-          top:       0,
-          left:      0,
-          width:     "1px",
-          height:    "1px",
-          overflow:  "hidden",
-          zIndex:    state.currentVideo ? 55 : -1,
-          opacity:   isVideo ? 1 : 0,
-          pointerEvents: isVideo ? "auto" : "none",
-          background: "#000",
-          borderRadius: "0",
-          transition: "opacity 0.2s",
+          position:      "fixed",
+          top:           0,
+          left:          0,
+          width:         "1px",
+          height:        "1px",
+          opacity:       0,
+          pointerEvents: "none",
+          zIndex:        -1,
+          overflow:      "hidden",
+          background:    "#000",
+          borderRadius:  "0",
+          transition:    "opacity 0.2s",
         }}
       >
-        {state.currentVideo && (
+        {videoId && (
           <iframe
             ref={iframeRef}
-            key={iframeKey}
-            src={`https://www.youtube.com/embed/${state.currentVideo.id}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1`}
-            title={state.currentVideo.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            key={videoId}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=1`}
+            title="Arise YT Player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             style={{ width: "100%", height: "100%", border: "none", display: "block" }}
           />
         )}
       </div>
-
       {children}
     </YTContext.Provider>
   );
 }
 
-// Helper: position the fixed iframe container to cover a given DOM element
-// Called by the modal when showing video mode
-export function positionIframeOver(slotEl) {
-  const container = document.getElementById("yt-iframe-container");
-  if (!container || !slotEl) return;
-  const rect = slotEl.getBoundingClientRect();
-  container.style.top    = `${rect.top}px`;
-  container.style.left   = `${rect.left}px`;
-  container.style.width  = `${rect.width}px`;
-  container.style.height = `${rect.height}px`;
-  container.style.borderRadius = "12px";
-  container.style.overflow = "hidden";
+// ── Module-level helpers (callable from modal without hooks) ──────────────────
+
+export function showIframeOverElement(el) {
+  const c = document.getElementById("arise-yt-container");
+  if (!c || !el) return;
+  // Use a small delay to ensure el is laid out
+  requestAnimationFrame(() => {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0) return; // not yet painted
+    c.style.top           = `${r.top  + window.scrollY}px`;
+    c.style.left          = `${r.left + window.scrollX}px`;
+    c.style.width         = `${r.width}px`;
+    c.style.height        = `${r.height}px`;
+    c.style.opacity       = "1";
+    c.style.pointerEvents = "auto";
+    c.style.zIndex        = "65";
+    c.style.borderRadius  = "12px";
+    c.style.overflow      = "hidden";
+  });
 }
 
-// Helper: send iframe back to off-screen audio-only position
-export function hideIframeToBackground() {
-  const container = document.getElementById("yt-iframe-container");
-  if (!container) return;
-  container.style.top    = "0";
-  container.style.left   = "0";
-  container.style.width  = "1px";
-  container.style.height = "1px";
-  container.style.borderRadius = "0";
-  container.style.overflow = "hidden";
+export function hideIframeContainer() {
+  const c = document.getElementById("arise-yt-container");
+  if (!c) return;
+  c.style.top           = "0";
+  c.style.left          = "0";
+  c.style.width         = "1px";
+  c.style.height        = "1px";
+  c.style.opacity       = "0";
+  c.style.pointerEvents = "none";
+  c.style.zIndex        = "-1";
+  c.style.borderRadius  = "0";
 }

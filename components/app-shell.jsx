@@ -72,7 +72,7 @@ export default function AppShell({ children }) {
 
         <div className="px-5 pb-4 flex-shrink-0">
           <p style={{ color: "#1e1e2e", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif" }}>
-            RemiX · Powered by JioSaavn + YouTube
+            Arise · JioSaavn + YouTube
           </p>
         </div>
       </aside>

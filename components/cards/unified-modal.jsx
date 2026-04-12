@@ -13,11 +13,11 @@
  * YouTube audio: iframe lives in a FIXED container in YTProvider.
  * In audio mode: container is 1x1px off-screen, audio keeps playing.
  * In video mode: we position the container to cover the slot div using
- * positionIframeOver() / hideIframeToBackground() from use-youtube.
+ * showIframeOverElement() / hideIframeContainer() from use-youtube.
  */
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useMusicProvider } from "@/hooks/use-context";
-import { useYT, positionIframeOver, hideIframeToBackground } from "@/hooks/use-youtube";
+import { useYT, showIframeOverElement, hideIframeContainer } from "@/hooks/use-youtube";
 import { getSongsSuggestions } from "@/lib/fetch";
 import { getRelatedVideos, searchYT } from "@/lib/youtube";
 import {
@@ -52,31 +52,37 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
   useEffect(() => { if (activeSource) setTab(activeSource); }, [activeSource]);
 
   // ── Position iframe over the video slot ──────────────────────────
-  // Runs after layout paint so we have accurate getBoundingClientRect
-  useLayoutEffect(() => {
+  // Uses ResizeObserver to fire once the slot element is actually painted.
+  useEffect(() => {
     if (!open || tab !== "yt" || yt.ytMode !== "video") {
-      hideIframeToBackground();
+      hideIframeContainer();
       return;
     }
-    if (!videoSlotRef.current) return;
 
-    // Position immediately
-    positionIframeOver(videoSlotRef.current);
+    let ro = null;
+    let attempts = 0;
 
-    // Reposition on window resize
-    const onResize = () => positionIframeOver(videoSlotRef.current);
-    window.addEventListener("resize", onResize);
+    function tryPosition() {
+      const slot = videoSlotRef.current;
+      if (!slot) {
+        if (++attempts < 20) setTimeout(tryPosition, 50);
+        return;
+      }
+      showIframeOverElement(slot);
+
+      // Keep in sync on resize
+      ro = new ResizeObserver(() => showIframeOverElement(slot));
+      ro.observe(slot);
+      window.addEventListener("resize", () => showIframeOverElement(slot));
+    }
+
+    const t = setTimeout(tryPosition, 80); // give React one tick to paint the slot
+
     return () => {
-      window.removeEventListener("resize", onResize);
-      hideIframeToBackground();
+      clearTimeout(t);
+      if (ro) ro.disconnect();
+      hideIframeContainer();
     };
-  }, [open, tab, yt.ytMode]);
-
-  // Also reposition when slot re-renders (e.g. layout shift)
-  useEffect(() => {
-    if (!open || tab !== "yt" || yt.ytMode !== "video" || !videoSlotRef.current) return;
-    const timer = setTimeout(() => positionIframeOver(videoSlotRef.current), 100);
-    return () => clearTimeout(timer);
   }, [open, tab, yt.ytMode]);
 
   // ── Load data ─────────────────────────────────────────────────────
@@ -331,7 +337,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
               <div className="flex justify-center mb-4 flex-shrink-0">
                 <div className="flex rounded-xl overflow-hidden"
                   style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(12,12,22,0.9)" }}>
-                  <TabBtn active={yt.ytMode === "audio"} onClick={() => { yt.setYtMode("audio"); hideIframeToBackground(); }} color="#FF003C">
+                  <TabBtn active={yt.ytMode === "audio"} onClick={() => { yt.setYtMode("audio"); hideIframeContainer(); }} color="#FF003C">
                     <Music2 className="w-3 h-3" /> Audio Only
                   </TabBtn>
                   <TabBtn active={yt.ytMode === "video"} onClick={() => yt.setYtMode("video")} color="#FF4444">

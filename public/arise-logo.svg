@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a12"/>
+      <stop offset="100%" style="stop-color:#12001a"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF003C"/>
+      <stop offset="50%" style="stop-color:#CC0030"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#flame)" stroke-width="3" opacity="0.5"/>
+  <polygon points="256,60 120,420 175,420 256,180 337,420 392,420" fill="url(#flame)"/>
+  <rect x="162" y="290" width="188" height="42" rx="4" fill="url(#flame)"/>
+  <path d="M220,90 C195,30 150,10 160,50 C170,90 205,100 220,90Z" fill="url(#flame)" opacity="0.9"/>
+  <path d="M292,90 C317,30 362,10 352,50 C342,90 307,100 292,90Z" fill="url(#flame)" opacity="0.9"/>
+  <polygon points="256,155 202,310 310,310" fill="#0a0a12"/>
+  <ellipse cx="256" cy="255" rx="18" ry="20" fill="#FF003C" opacity="0.95"/>
+  <ellipse cx="256" cy="255" rx="8" ry="10" fill="#0a0a12"/>
+  <circle cx="260" cy="251" r="3" fill="white" opacity="0.8"/>
+</svg>
