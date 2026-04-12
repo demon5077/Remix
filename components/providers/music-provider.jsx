@@ -192,7 +192,9 @@ export default function MusicProvider({ children }) {
       if (queue.length > 0) {
         const [next, ...rest] = queue;
         setQueue(rest);
-        playSong(next);
+        // queue items can be either a string id or a full song object
+        const nextId = typeof next === "string" ? next : (next?.id || next);
+        if (nextId) playSong(nextId);
       } else {
         setPlaying(false);
       }

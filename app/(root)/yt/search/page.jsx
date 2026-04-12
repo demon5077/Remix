@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import YTSearchInner from "./_components/YTSearchInner";
 
 export const metadata = {
-  title: "YouTube Search — RemiX",
+  title: "YouTube Search — Arise",
 };
 
 export default function YTSearchPage() {

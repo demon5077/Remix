@@ -391,6 +391,30 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                 </div>
               </div>
 
+              {/* YT progress bar — indeterminate pulse when playing, paused when not */}
+              <div className="mb-4 flex-shrink-0">
+                <div className="w-full h-1.5 rounded-full overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      background:  "linear-gradient(to right, #8B0000, #FF003C, #FF4444)",
+                      width:       yt.playing ? "100%" : "0%",
+                      animation:   yt.playing ? "ytProgress 3s ease-in-out infinite alternate" : "none",
+                      transition:  "width 0.3s",
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
+                    {yt.playing ? "▶ LIVE" : "⏸ PAUSED"}
+                  </span>
+                  <span style={{ color: "#44445a", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
+                    {yt.currentVideo?.durationText || ""}
+                  </span>
+                </div>
+              </div>
+
               {/* YT transport */}
               <div className="flex items-center justify-between mb-4 flex-shrink-0">
                 <CtrlBtn onClick={yt.toggleShuffle} active={yt.shuffle} activeColor="#FF003C">

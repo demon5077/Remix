@@ -89,7 +89,7 @@ export default function SettingsPage() {
             ABOUT
           </p>
           <p className="text-sm" style={{ color: "#8888aa", fontFamily: "Rajdhani, sans-serif" }}>
-            RemiX v2.0 · Built for educational purposes.<br />
+            Arise v2.0 · Built for educational purposes.<br />
             Powered by JioSaavn API · Music data © respective owners.
           </p>
           <p className="text-xs mt-3" style={{ color: "#44445a" }}>

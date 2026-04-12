@@ -3,17 +3,20 @@ import Player from "../_components/Player";
 import Recomandation from "../_components/Recomandation";
 import AdvanceSearch from "../_components/AdvanceSearch";
 
+export const dynamic = "force-dynamic";
+
 export const generateMetadata = async ({ params }) => {
   try {
     const res  = await getSongsById(params.id);
+    if (!res) return { title: "Arise — Now Playing" };
     const data = await res.json();
-    const song = data?.data[0];
-    if (!song) return { title: "RemiX — Now Playing" };
+    const song = data?.data?.[0];
+    if (!song) return { title: "Arise — Now Playing" };
     return {
-      title: `${song.name} — RemiX`,
-      description: `Listen to "${song.name}" by ${song.artists?.primary?.[0]?.name || "Unknown"} on RemiX.`,
+      title: `${song.name} — Arise`,
+      description: `Listen to "${song.name}" by ${song.artists?.primary?.[0]?.name || "Unknown"} on Arise.`,
       openGraph: {
-        title: `${song.name} — RemiX`,
+        title: `${song.name} — Arise`,
         description: `Stream "${song.name}" by ${song.artists?.primary?.[0]?.name || "Unknown"}.`,
         type: "music.song",
         url: song.url,
@@ -28,13 +31,13 @@ export const generateMetadata = async ({ params }) => {
       },
       twitter: {
         card: "summary_large_image",
-        title: `${song.name} — RemiX`,
+        title: `${song.name} — Arise`,
         description: `Stream "${song.name}" by ${song.artists?.primary?.[0]?.name || "Unknown"}.`,
         images: song.image?.[0]?.url,
       },
     };
   } catch {
-    return { title: "RemiX — Now Playing" };
+    return { title: "Arise — Now Playing" };
   }
 };
 

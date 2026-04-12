@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useYT } from "@/hooks/use-youtube";
 import { useMusicProvider } from "@/hooks/use-context";

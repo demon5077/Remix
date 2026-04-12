@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+
 import { getSongsById } from "@/lib/fetch";
 import { useMusicProvider } from "@/hooks/use-context";
 import SongCard from "@/components/cards/song";

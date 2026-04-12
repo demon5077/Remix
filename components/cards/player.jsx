@@ -114,8 +114,17 @@ export default function Player() {
             />
           </div>
         ) : (
-          <div className="w-full h-[3px]"
-            style={{ background: "linear-gradient(to right, #8B0000, #FF003C)", opacity: 0.7 }} />
+          <div className="w-full h-[3px] overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+            <div style={{
+              height: "100%",
+              background: "linear-gradient(to right, #8B0000, #FF003C, #FF4444)",
+              boxShadow: "0 0 6px rgba(255,0,60,0.5)",
+              animation: isPlaying ? "ytProgress 3s ease-in-out infinite alternate" : "none",
+              width: isPlaying ? "100%" : "20%",
+              opacity: isPlaying ? 1 : 0.4,
+              transition: "opacity 0.3s",
+            }} />
+          </div>
         )}
 
         {/* ── 3-column row ─────────────────────────── */}

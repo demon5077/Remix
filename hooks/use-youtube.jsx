@@ -123,13 +123,24 @@ export function YTProvider({ children }) {
           if (data.info === 1) dispatch({ type: "SET_PLAYING", payload: true  });
           if (data.info === 2) dispatch({ type: "SET_PLAYING", payload: false });
           if (data.info === 0) {
+            // Video ended — advance queue
             dispatch({ type: "SET_PLAYING", payload: false });
             dispatch({ type: "NEXT" });
           }
         }
-        // Set initial volume after iframe ready
         if (data?.event === "onReady") {
           ytCmd("setVolume", [Math.round(ytVolume * 100)]);
+          ytCmd("playVideo"); // ensure autoplay after ready
+        }
+        // getCurrentTime response — used for duration tracking
+        if (data?.event === "infoDelivery" && data?.info?.currentTime !== undefined) {
+          const ct  = data.info.currentTime || 0;
+          const dur = data.info.duration    || 0;
+          // If within last 2 seconds of known duration, trigger next
+          if (dur > 10 && dur - ct < 2 && ct > 0) {
+            dispatch({ type: "SET_PLAYING", payload: false });
+            dispatch({ type: "NEXT" });
+          }
         }
       } catch {}
     };
@@ -153,6 +164,23 @@ export function YTProvider({ children }) {
       window.dispatchEvent(new CustomEvent("arise:yt:playing"));
     }
   }, [state.playing, state.currentVideo]);
+
+  // Poll getCurrentTime to enable duration-based auto-next fallback
+  useEffect(() => {
+    if (!state.playing) return;
+    const interval = setInterval(() => {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: "listening" }), "*"
+        );
+        // Also ask YT API for current time via command
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: "command", func: "getCurrentTime", args: [] }), "*"
+        );
+      } catch {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [state.playing]);
 
   // When video changes → update iframe src (key-based remount via videoId)
   useEffect(() => {
@@ -248,12 +276,12 @@ export function YTProvider({ children }) {
 export function showIframeOverElement(el) {
   const c = document.getElementById("arise-yt-container");
   if (!c || !el) return;
-  // Use a small delay to ensure el is laid out
   requestAnimationFrame(() => {
     const r = el.getBoundingClientRect();
-    if (r.width === 0) return; // not yet painted
-    c.style.top           = `${r.top  + window.scrollY}px`;
-    c.style.left          = `${r.left + window.scrollX}px`;
+    if (r.width < 10 || r.height < 10) return; // not yet laid out
+    // The modal is fixed so we use viewport coords directly
+    c.style.top           = `${r.top}px`;
+    c.style.left          = `${r.left}px`;
     c.style.width         = `${r.width}px`;
     c.style.height        = `${r.height}px`;
     c.style.opacity       = "1";
@@ -261,6 +289,7 @@ export function showIframeOverElement(el) {
     c.style.zIndex        = "65";
     c.style.borderRadius  = "12px";
     c.style.overflow      = "hidden";
+    c.style.transition    = "none"; // no transition on resize
   });
 }
 

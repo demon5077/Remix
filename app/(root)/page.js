@@ -126,7 +126,7 @@ export default function Page() {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               filter: "drop-shadow(0 0 20px rgba(255,0,60,0.3))",
             }}>
-            RemiX
+            Arise
           </h1>
           <p className="text-sm font-medium"
             style={{ color: "#8888aa", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>

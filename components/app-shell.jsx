@@ -6,13 +6,14 @@ import Search from "@/components/page/search";
 import Player from "@/components/cards/player";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
-import { Home, Search as SearchIcon, Library, Heart, Clock, Settings } from "lucide-react";
+import { Home, Search as SearchIcon, Library, Heart, Clock, Settings, ListMusic } from "lucide-react";
 
 const NAV = [
-  { href: "/",       icon: Home,       label: "Home"    },
-  { href: "/search", icon: SearchIcon, label: "Search"  },
-  { href: "/library",icon: Library,    label: "Library" },
-  { href: "/liked",  icon: Heart,      label: "Liked"   },
+  { href: "/",          icon: Home,       label: "Home"      },
+  { href: "/search",    icon: SearchIcon, label: "Search"    },
+  { href: "/library",   icon: Library,    label: "Library"   },
+  { href: "/liked",     icon: Heart,      label: "Liked"     },
+  { href: "/playlists", icon: ListMusic,  label: "Playlists" },
 ];
 
 const SIDEBAR_EXTRA = [
@@ -117,10 +118,10 @@ function TopBar() {
 
 function MobileNav({ path, hasPlayer }) {
   const items = [
-    { href: "/",        icon: Home,       label: "Home"    },
-    { href: "/search",  icon: SearchIcon, label: "Search"  },
-    { href: "/library", icon: Library,    label: "Library" },
-    { href: "/liked",   icon: Heart,      label: "Liked"   },
+    { href: "/",          icon: Home,       label: "Home"   },
+    { href: "/search",    icon: SearchIcon, label: "Search" },
+    { href: "/library",   icon: Library,    label: "Library"},
+    { href: "/playlists", icon: ListMusic,  label: "Lists"  },
   ];
   return (
     <nav className="md:hidden fixed left-0 right-0 z-40 flex items-center justify-around px-1"
