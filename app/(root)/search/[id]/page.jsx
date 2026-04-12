@@ -3,8 +3,8 @@ import Search from "../_components/Search";
 export const generateMetadata = ({ params }) => {
   const q = decodeURIComponent(params.id);
   return {
-    title: `"${q.toUpperCase()}" — RemiX Search`,
-    description: `Search results for ${q} on RemiX.`,
+    title: `"${q.toUpperCase()}" — Arise Search`,
+    description: `Search results for ${q} on Arise.`,
   };
 };
 
