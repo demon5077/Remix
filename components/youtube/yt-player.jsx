@@ -19,7 +19,7 @@ export default function YTPlayer({ onClose }) {
     next, prev, addToQueue, setQueue, removeFromQueue,
     toggleShuffle, shuffle, setRepeat, repeat, stop,
     toggleLike, isLiked, playVideo,
-  } = useYT();
+  } = useYT() || {};
 
   const [related,    setRelated]    = useState([]);
   const [loadingRel, setLoadingRel] = useState(false);

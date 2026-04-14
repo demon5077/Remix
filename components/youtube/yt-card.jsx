@@ -7,7 +7,7 @@ import { Play, Plus, Clock } from "lucide-react";
  * layout: "scroll" (horizontal card) | "grid" (vertical card)
  */
 export default function YTCard({ item, layout = "scroll" }) {
-  const { playVideo, addToQueue, currentVideo } = useYT();
+  const { playVideo, addToQueue, currentVideo } = useYT() || {};
   if (!item) return null;
 
   const isActive = currentVideo?.id === item.id;

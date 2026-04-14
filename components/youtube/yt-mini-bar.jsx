@@ -10,7 +10,7 @@ import YTPlayer from "./yt-player";
  * On desktop the player is shown in the sidebar panel.
  */
 export default function YTMiniBar() {
-  const { currentVideo, next, stop, queue } = useYT();
+  const { currentVideo, next, stop, queue } = useYT() || {};
   const [open, setOpen] = useState(false);
 
   if (!currentVideo) return null;

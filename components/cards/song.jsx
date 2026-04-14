@@ -3,7 +3,10 @@ import { useMusicProvider } from "@/hooks/use-context";
 import { IoPlay } from "react-icons/io5";
 
 export default function SongCard({ title, image, artist, id, desc }) {
-  const { music, playSong, playing } = useMusicProvider();
+  const ctx      = useMusicProvider();
+  const music    = ctx?.music;
+  const playSong = ctx?.playSong;
+  const playing  = ctx?.playing;
   const isActive = music === id;
 
   // Skeleton

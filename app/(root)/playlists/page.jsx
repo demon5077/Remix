@@ -11,8 +11,8 @@ import { toast } from "sonner";
 
 export default function PlaylistsPage() {
   const auth   = useAuth();
-  const yt     = useYT();
-  const saavn  = useMusicProvider();
+  const yt     = useYT() || {};
+  const saavn  = useMusicProvider() || {};
   const router = useRouter();
 
   const [activePlaylist, setActivePlaylist] = useState(null);

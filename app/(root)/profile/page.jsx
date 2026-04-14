@@ -23,8 +23,8 @@ import { Suspense } from "react";
 
 function ProfileInner() {
   const searchParams = useSearchParams();
-  const yt    = useYT();
-  const saavn = useMusicProvider();
+  const yt    = useYT() || {};
+  const saavn = useMusicProvider() || {};
 
   const [googleProfile,  setGoogleProfile]  = useState(null);
   const [spotifyProfile, setSpotifyProfile] = useState(null);

@@ -8,7 +8,7 @@ import { IoPlay } from "react-icons/io5";
 
 export default function Album({ id }) {
   const [data, setData] = useState(null);
-  const { playSong, setQueue } = useMusicProvider();
+  const { playSong, setQueue } = useMusicProvider() || {};
 
   useEffect(() => {
     getAlbumById(id).then(r => r.json()).then(d => setData(d.data));
