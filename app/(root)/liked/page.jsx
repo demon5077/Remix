@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 
 export default function LikedPage() {
-  const { playSong } = useMusicProvider();
+  const { playSong } = useMusicProvider() || {};
   const [likedIds, setLikedIds] = useState([]);
   const [songs, setSongs]       = useState({});
 

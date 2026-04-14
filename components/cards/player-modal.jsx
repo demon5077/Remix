@@ -22,7 +22,7 @@ export default function PlayerModal({ open, onClose }) {
     currentTime, duration, progress, formatTime, seek,
     queue, setQueue, recentlyPlayed, isLoading,
     playSong,
-  } = useMusicProvider();
+  } = useMusicProvider() || {};
 
   const [suggestions, setSuggestions] = useState([]);
   const [loading,     setLoading]     = useState(false);

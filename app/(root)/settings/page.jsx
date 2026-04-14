@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Trash2, Volume2 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { volume, changeVolume, recentlyPlayed } = useMusicProvider();
+  const { volume, changeVolume, recentlyPlayed } = useMusicProvider() || {};
   const [cleared, setCleared] = useState(false);
 
   const clearHistory = () => {

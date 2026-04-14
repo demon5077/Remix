@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 
 export default function RecentPage() {
-  const { recentlyPlayed } = useMusicProvider();
+  const { recentlyPlayed } = useMusicProvider() || {};
   const [songs, setSongs] = useState({});
 
   useEffect(() => {

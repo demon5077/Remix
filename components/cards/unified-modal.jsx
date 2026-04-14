@@ -30,8 +30,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 export default function UnifiedModal({ open, onClose, activeSource }) {
-  const saavn = useMusicProvider();
-  const yt    = useYT();
+  const saavn = useMusicProvider() || {};
+  const yt    = useYT() || {};
 
   const [tab,       setTab]      = useState(activeSource || "saavn");
   const videoSlotRef             = useRef(null);
@@ -391,26 +391,43 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                 </div>
               </div>
 
-              {/* YT progress bar — indeterminate pulse when playing, paused when not */}
+              {/* YT progress bar — real-time from ytProgress, seekable via ytSeek */}
               <div className="mb-4 flex-shrink-0">
-                <div className="w-full h-1.5 rounded-full overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div
+                  className="relative w-full h-1.5 rounded-full cursor-pointer group"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
+                  onClick={e => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    if (yt.ytSeek && yt.ytDuration > 0) yt.ytSeek(pct * yt.ytDuration);
+                  }}
+                >
                   <div
-                    className="h-full rounded-full"
+                    className="h-full rounded-full transition-none"
                     style={{
-                      background:  "linear-gradient(to right, #8B0000, #FF003C, #FF4444)",
-                      width:       yt.playing ? "100%" : "0%",
-                      animation:   yt.playing ? "ytProgress 3s ease-in-out infinite alternate" : "none",
-                      transition:  "width 0.3s",
+                      width:      `${yt.ytProgress || 0}%`,
+                      background: "linear-gradient(to right, #8B0000, #FF003C, #FF4444)",
+                      boxShadow:  "0 0 6px rgba(255,0,60,0.4)",
+                    }}
+                  />
+                  {/* Thumb */}
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{
+                      left:       `calc(${yt.ytProgress || 0}% - 7px)`,
+                      background: "#FF4444",
+                      boxShadow:  "0 0 6px #FF4444",
                     }}
                   />
                 </div>
-                <div className="flex justify-between mt-1">
+                <div className="flex justify-between mt-1.5">
                   <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
-                    {yt.playing ? "▶ LIVE" : "⏸ PAUSED"}
+                    {yt.ytFormatTime ? yt.ytFormatTime(yt.ytCurrentTime || 0) : "0:00"}
                   </span>
                   <span style={{ color: "#44445a", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
-                    {yt.currentVideo?.durationText || ""}
+                    {yt.ytFormatTime && yt.ytDuration > 0
+                      ? yt.ytFormatTime(yt.ytDuration)
+                      : (yt.currentVideo?.durationText || "")}
                   </span>
                 </div>
               </div>

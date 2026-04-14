@@ -21,9 +21,9 @@ export default function Player({ id }) {
     toggleLoop, isLooping,
     currentTime, duration, progress, formatTime, seek,
     audioURL, isLoading,
-  } = useMusicProvider();
+  } = useMusicProvider() || {};
 
-  const next = useNextMusicProvider();
+  const next = useNextMusicProvider() || {};
 
   // On mount: play this song via global context
   useEffect(() => {
