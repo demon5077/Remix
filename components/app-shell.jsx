@@ -6,7 +6,11 @@ import Search from "@/components/page/search";
 import Player from "@/components/cards/player";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
+<<<<<<< HEAD
 import { Home, Search as SearchIcon, Library, Heart, Clock, Settings, ListMusic, Mic, Info, LogIn } from "lucide-react";
+=======
+import { Home, Search as SearchIcon, Library, Heart, Clock, Settings, ListMusic, Mic, Info } from "lucide-react";
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
 import AnimatedBackground from "@/components/home/animated-background";
 
 const NAV = [
@@ -22,6 +26,7 @@ const SIDEBAR_EXTRA = [
   { href: "/recent",   icon: Clock,    label: "Recently Played" },
   { href: "/settings", icon: Settings, label: "Settings"        },
   { href: "/about",    icon: Info,     label: "About"           },
+<<<<<<< HEAD
   { href: "/login",    icon: LogIn,    label: "Login"           },
 ];
 
@@ -29,6 +34,8 @@ const SIDEBAR_BOTTOM = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms",   label: "Terms"          },
   { href: "/about",   label: "About"          },
+=======
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
 ];
 
 export default function AppShell({ children }) {
@@ -42,10 +49,16 @@ export default function AppShell({ children }) {
       <AnimatedBackground />
 
       {/* ── Sidebar ─────────────────────────────────── */}
+<<<<<<< HEAD
       <aside
         className="hidden md:flex flex-col w-56 flex-shrink-0 h-full overflow-hidden relative z-10"
         style={{ background: "rgba(5,5,10,0.97)", borderRight: "1px solid rgba(255,0,60,0.07)" }}
       >
+=======
+      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 h-full overflow-hidden relative z-10"
+        style={{ background: "rgba(5,5,10,0.97)", borderRight: "1px solid rgba(255,0,60,0.07)" }}>
+
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
         <div className="px-5 pt-6 pb-5 flex-shrink-0"><Logo /></div>
 
         {/* Main nav */}
@@ -92,6 +105,7 @@ export default function AppShell({ children }) {
 
         <div className="flex-1" />
 
+<<<<<<< HEAD
         {/* Bottom legal links */}
         <div className="px-5 pb-5 flex-shrink-0 space-y-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)", paddingTop: "14px" }}>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -107,6 +121,23 @@ export default function AppShell({ children }) {
             ))}
           </div>
           <p style={{ color: "#555577", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+=======
+        {/* Footer links in sidebar */}
+        <div className="px-5 pb-3 flex-shrink-0 space-y-1">
+          {[
+            { href: "/privacy", label: "Privacy" },
+            { href: "/terms",   label: "Terms"   },
+          ].map(({ href, label }) => (
+            <Link key={href} href={href}
+              className="block text-[10px] transition-colors"
+              style={{ color: "#2a2a3a", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#44445a"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#2a2a3a"; }}>
+              {label}
+            </Link>
+          ))}
+          <p style={{ color: "#1e1e2e", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif" }}>
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
             Arise · JioSaavn + YouTube
           </p>
           <p style={{ color: "#444466", fontSize: "0.55rem", fontFamily: "Rajdhani, sans-serif" }}>
@@ -123,7 +154,14 @@ export default function AppShell({ children }) {
         </main>
       </div>
 
+<<<<<<< HEAD
       <Player />
+=======
+      {/* ── Unified player ──────────────────────────── */}
+      <Player />
+
+      {/* ── Mobile nav ──────────────────────────────── */}
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
       <MobileNav path={path} hasPlayer={hasPlayer} />
     </div>
   );
@@ -156,7 +194,10 @@ function MobileNav({ path, hasPlayer }) {
     { href: "/search",    icon: SearchIcon, label: "Search"  },
     { href: "/podcasts",  icon: Mic,        label: "Podcasts"},
     { href: "/playlists", icon: ListMusic,  label: "Lists"   },
+<<<<<<< HEAD
     { href: "/login",     icon: LogIn,      label: "Login"   },
+=======
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
   ];
   return (
     <nav className="md:hidden fixed left-0 right-0 z-40 flex items-center justify-around px-1"

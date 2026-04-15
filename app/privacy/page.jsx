@@ -83,7 +83,11 @@ const SECTIONS = [
       },
       {
         sub: "5.3 Contact",
+<<<<<<< HEAD
         text: "For any privacy-related enquiries, reach out to: privacy@arise.music (placeholder — replace with actual contact before production deployment).",
+=======
+        text: "For any privacy-related enquiries, reach out to: privacy@arise.pp.ua",
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
       },
     ],
   },

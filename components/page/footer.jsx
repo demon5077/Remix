@@ -48,7 +48,11 @@ export default function Footer() {
         <div className="flex flex-col items-center mb-8 text-center">
           <p
             className="text-[10px] mb-1.5 tracking-[0.3em] uppercase"
+<<<<<<< HEAD
             style={{ color: "#9999bb", fontFamily: "Orbitron, sans-serif" }}
+=======
+            style={{ color: "#44445a", fontFamily: "Orbitron, sans-serif" }}
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
           >
             ✦ crafted in darkness ✦
           </p>
@@ -77,9 +81,15 @@ export default function Footer() {
                 key={label}
                 href={href}
                 className="text-xs transition-all duration-200"
+<<<<<<< HEAD
                 style={{ color: "#9999bb", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "#9999bb"; }}
+=======
+                style={{ color: "#44445a", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#44445a"; }}
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
               >
                 {label}
               </Link>
@@ -104,7 +114,11 @@ export default function Footer() {
                   e.currentTarget.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={e => {
+<<<<<<< HEAD
                   e.currentTarget.style.color = "#9999bb";
+=======
+                  e.currentTarget.style.color = "#44445a";
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
                   e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
                   e.currentTarget.style.boxShadow = "none";
                   e.currentTarget.style.background = "rgba(255,255,255,0.02)";
@@ -120,7 +134,11 @@ export default function Footer() {
         <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.03)" }}>
           <p
             className="text-center text-[10px] tracking-[0.06em]"
+<<<<<<< HEAD
             style={{ color: "#8888bb", fontFamily: "Rajdhani, sans-serif" }}
+=======
+            style={{ color: "#2a2a3a", fontFamily: "Rajdhani, sans-serif" }}
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
           >
             © {new Date().getFullYear()} Arise · Powered by JioSaavn API &amp; YouTube · Educational purposes only.
           </p>

@@ -70,7 +70,11 @@ const SECTIONS = [
   },
   {
     title: "13. Contact",
+<<<<<<< HEAD
     text: "For any questions about these Terms, please contact: legal@arise.music (placeholder — replace with actual contact before production deployment).",
+=======
+    text: "For any questions about these Terms, please contact: legal@arise.pp.ua",
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
   },
 ];
 

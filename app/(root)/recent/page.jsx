@@ -10,9 +10,14 @@ import { Clock, Play } from "lucide-react";
 import Link from "next/link";
 
 export default function RecentPage() {
+<<<<<<< HEAD
   const { recentlyPlayed, playSong } = useMusicProvider() || {};
   const { getRecent, playVideo }     = useYT() || {};
   const [ytRecent,  setYtRecent]     = useState([]);
+=======
+  const { recentlyPlayed } = useMusicProvider() || {};
+  const [songs, setSongs] = useState({});
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
 
   useEffect(() => {
     if (getRecent) setYtRecent(getRecent().slice(0, 20));

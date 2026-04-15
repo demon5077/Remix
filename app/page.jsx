@@ -18,6 +18,7 @@ import {
   searchAlbumByQuery,
 } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
+<<<<<<< HEAD
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
 
@@ -65,6 +66,8 @@ function ContinueListening() {
     </section>
   );
 }
+=======
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
 
 // ── Skeleton helpers ────────────────────────────────────────────────────
 const SONG_SKELETONS  = Array(8).fill(null);
@@ -154,9 +157,12 @@ export default function HomePage() {
         {/* ── Genre filters ────────────────────────────── */}
         <GenreFilters />
 
+<<<<<<< HEAD
         {/* ── Continue Listening (if recent history exists) ── */}
         <ContinueListening />
 
+=======
+>>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
         {/* ── YouTube Trending (demo cards if no API key) ─ */}
         <ScrollSection
           title="🔴 Trending on YouTube"
