@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 export default function Recomandation({ id }) {
   const [data, setData]       = useState([]);
   const [loading, setLoading] = useState(true);
-  const next = useNextMusicProvider();
+  const next = useNextMusicProvider() || {};
 
   useEffect(() => {
     getSongsSuggestions(id, 15)

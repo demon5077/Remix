@@ -10,7 +10,7 @@ import { Library } from "lucide-react";
 import Link from "next/link";
 
 export default function LibraryPage() {
-  const { recentlyPlayed, music } = useMusicProvider();
+  const { recentlyPlayed, music } = useMusicProvider() || {};
   const [songs, setSongs] = useState({});
 
   // Fetch song data for recently played IDs
