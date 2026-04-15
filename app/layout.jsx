@@ -13,20 +13,11 @@ export const metadata = {
   title:       { default: "Arise — Unleash the Sound", template: "%s — Arise" },
   description: "Stream music from the abyss. JioSaavn + YouTube in one infernal player.",
   manifest:    "/manifest.json",
-  themeColor:  "#FF003C",
-  viewport:    "width=device-width, initial-scale=1, maximum-scale=1",
   icons: {
     icon: [
       { url: "/favi-icon.png",  type: "image/png"  },
       { url: "/ios/32.png",    sizes: "32x32",   type: "image/png" },
       { url: "/ios/192.png",   sizes: "192x192", type: "image/png" },
-<<<<<<< HEAD
-=======
-      { url: "/ios/512.png",   sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/ios/180.png", sizes: "180x180", type: "image/png" },
->>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
     ],
     apple: [{ url: "/ios/180.png", sizes: "180x180", type: "image/png" }],
     shortcut: "/favi-icon.png",
@@ -34,7 +25,6 @@ export const metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Arise" },
 };
 
-<<<<<<< HEAD
 // ── viewport export fixes the themeColor/viewport warnings ──────────────────
 export const viewport = {
   themeColor:   "#FF003C",
@@ -43,8 +33,6 @@ export const viewport = {
   maximumScale: 1,
 };
 
-=======
->>>>>>> 5515522fddb6d87b4ff5301809ce05597f8bf9c4
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="dark">

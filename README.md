@@ -23,6 +23,12 @@
 - 📱 **PWA ready** — installable on iOS & Android
 - ⌨️ **Keyboard shortcuts** — Space (play/pause), M (mute), L (loop)
 
+## Screenshots
+
+| Home | Player | Playlists |
+|------|--------|-----------|
+| ![Home](public/feed.png) | ![Player](public/player-1.png) | ![Playlists](public/search-feed.png) |
+
 ## Setup
 
 ### 1. Clone & install
