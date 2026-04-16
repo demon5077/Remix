@@ -20,6 +20,7 @@ import { useMusicProvider } from "@/hooks/use-context";
 import { useYT, showIframeOverElement, hideIframeContainer } from "@/hooks/use-youtube";
 import { getSongsSuggestions } from "@/lib/fetch";
 import { getRelatedVideos, searchYT } from "@/lib/youtube";
+import { muzoRelated, muzoSearch } from "@/lib/muzo";
 import {
   ChevronDown, Repeat, Repeat1, Volume2, VolumeX,
   Download, Share2, Heart, Plus, X, SkipBack, SkipForward, Shuffle,
@@ -105,13 +106,31 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
     if (!yt.currentVideo || !open) return;
     setYtLoad(true);
     setYtRelated([]);
-    getRelatedVideos(yt.currentVideo.id).then(({ items }) => {
-      const valid = items.filter(Boolean).slice(0, 20);
-      setYtRelated(valid);
-      if (valid.length > 0 && yt.queue.length === 0) yt.setQueue(valid.slice(0, 8));
-      setYtLiked(yt.isLiked(yt.currentVideo.id));
-      setYtLoad(false);
-    });
+    // Try Muzo first (no API key needed), fall back to RapidAPI
+    muzoRelated(yt.currentVideo.id).then(muzoItems => {
+      if (muzoItems?.length) {
+        const valid = muzoItems.filter(i => i.videoId || i.id).slice(0, 20).map(i => ({
+          id:           i.videoId || i.id,
+          title:        i.title   || i.name,
+          channelTitle: i.artist  || i.channelTitle || "",
+          thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/mqdefault.jpg`,
+          durationText: i.duration || "",
+        }));
+        setYtRelated(valid);
+        if (valid.length > 0 && (yt.queue || []).length === 0) yt.setQueue?.(valid.slice(0, 8));
+        setYtLiked(yt.isLiked?.(yt.currentVideo.id) || false);
+        setYtLoad(false);
+      } else {
+        // Fallback to RapidAPI
+        return getRelatedVideos(yt.currentVideo.id).then(({ items }) => {
+          const valid = items.filter(Boolean).slice(0, 20);
+          setYtRelated(valid);
+          if (valid.length > 0 && (yt.queue || []).length === 0) yt.setQueue?.(valid.slice(0, 8));
+          setYtLiked(yt.isLiked?.(yt.currentVideo.id) || false);
+          setYtLoad(false);
+        });
+      }
+    }).catch(() => setYtLoad(false));
   }, [yt.currentVideo?.id, open]);
 
   // ── When Saavn tab + video mode: find YT song and play audio ─────
@@ -120,6 +139,17 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
     if (!saavn.songData) return;
     const q = `${saavn.songData.name} ${saavn.songData.artists?.primary?.[0]?.name || ""} official`;
     setSaavnYtSearching(true);
+    // Try Muzo first
+    const muzoItems = await muzoSearch(q, "songs", 3).catch(() => []);
+    if (muzoItems?.length) {
+      const first = muzoItems[0];
+      const vid   = { id: first.videoId || first.id, title: first.title, channelTitle: (first.artists || []).map(a => a.name || a).join(", "), thumbnail: first.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${first.videoId || first.id}/mqdefault.jpg` };
+      yt.playVideo(vid);
+      setSaavnYtSearching(false);
+      setTab("yt");
+      toast("🎬 Opened YouTube version");
+      return;
+    }
     const { items } = await searchYT(q, "video");
     setSaavnYtSearching(false);
     if (items?.[0]) {

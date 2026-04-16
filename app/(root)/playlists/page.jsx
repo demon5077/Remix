@@ -6,9 +6,11 @@ import { useYT } from "@/hooks/use-youtube";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Music2, Youtube, PlayCircle, Import, LogIn, Trash2, Upload } from "lucide-react";
+import { Music2, Youtube, PlayCircle, Import, LogIn, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import PlaylistManager from "@/components/playlist/playlist-manager";
+import { getSession, saveSession, persistPlaylist } from "@/lib/arise-auth";
 
 export default function PlaylistsPage() {
   const auth   = useAuth();
@@ -214,101 +216,53 @@ export default function PlaylistsPage() {
           )}
         </div>
 
-        {/* Track list */}
-        <div className="flex-1 min-w-0">
-          {!activePlaylist && (
+        {/* Track list / Manager */}
+        <div className="flex-1 min-w-0 min-h-0">
+          {!activePlaylist ? (
             <div className="flex flex-col items-center justify-center h-48 rounded-2xl"
               style={{ background: "rgba(18,18,32,0.4)", border: "1px solid rgba(255,255,255,0.04)" }}>
               <PlayCircle className="w-10 h-10 mb-3" style={{ color: "#44445a" }} />
-              <p className="text-sm" style={{ color: "#8888aa" }}>Select a playlist to view its tracks</p>
+              <p className="text-sm" style={{ color: "#8888aa" }}>Select a playlist to view and manage its tracks</p>
             </div>
-          )}
-          {activePlaylist && (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-black" style={{ fontFamily: "Rajdhani, sans-serif", color: "#e8e8f8" }}>
-                    {activePlaylist.name}
-                  </h2>
-                  <p className="remix-section-title">{activePlaylist.count} tracks</p>
-                </div>
-                {/* Play all */}
-                <button
-                  onClick={() => {
-                    if (tracks.length === 0) return;
-                    if (activePlaylist.source === "youtube") {
-                      yt.playVideo(tracks[0]);
-                      yt.setQueue(tracks.slice(1));
-                      toast("Playing YouTube playlist");
-                    } else {
-                      playSpotifyOnSaavn(tracks[0]);
-                    }
-                  }}
-                  className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95"
-                  style={{
-                    background:    "linear-gradient(135deg, #8B0000, #FF003C)",
-                    color:         "white",
-                    fontFamily:    "Orbitron, sans-serif",
-                    letterSpacing: "0.08em",
-                    boxShadow:     "0 0 16px rgba(255,0,60,0.3)",
-                  }}>
-                  <PlayCircle className="w-3.5 h-3.5" /> PLAY ALL
-                </button>
-              </div>
-
-              {loadingTracks && (
-                <div className="space-y-2">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "rgba(18,18,32,0.4)" }}>
-                      <div className="remix-shimmer w-10 h-10 rounded-lg flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="remix-shimmer h-3 w-4/5 rounded" />
-                        <div className="remix-shimmer h-2.5 w-3/5 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!loadingTracks && tracks.length === 0 && (
-                <p className="text-sm" style={{ color: "#44445a" }}>No tracks found in this playlist</p>
-              )}
-
-              {!loadingTracks && tracks.map((track, i) => {
-                const isYtTrack  = activePlaylist.source === "youtube";
-                const name       = isYtTrack ? track.title : track.name;
-                const sub        = isYtTrack ? track.channelTitle : track.artists;
-                const thumb      = track.thumbnail;
-                return (
-                  <button key={track.id || i}
-                    onClick={() => isYtTrack ? playYouTubeTrack(track) : playSpotifyOnSaavn(track)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all duration-200 mb-1.5 group"
-                    style={{ background: "rgba(18,18,32,0.5)", border: "1px solid rgba(255,255,255,0.04)" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(24,24,40,0.9)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "rgba(18,18,32,0.5)"}>
-                    <span className="w-6 text-center text-[0.55rem] flex-shrink-0"
-                      style={{ color: "#44445a", fontFamily: "Orbitron, sans-serif" }}>{i+1}</span>
-                    {thumb ? (
-                      <img src={thumb} alt={name}
-                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                        style={{ background: "rgba(18,18,32,0.8)" }} />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
-                        style={{ background: "rgba(18,18,32,0.8)" }}>
-                        <Music2 className="w-4 h-4" style={{ color: "#44445a" }} />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate transition-colors group-hover:text-hellfire"
-                        style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{name}</p>
-                      {sub && <p className="text-xs truncate" style={{ color: "#8888aa" }}>{sub}</p>}
-                    </div>
-                    <PlayCircle className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                      style={{ color: "#FF003C" }} />
-                  </button>
-                );
-              })}
-            </>
+          ) : (
+            <div className="rounded-2xl overflow-hidden h-full"
+              style={{ background: "rgba(10,10,20,0.8)", border: "1px solid rgba(255,0,60,0.08)" }}>
+              <PlaylistManager
+                playlist={activePlaylist}
+                onUpdate={(updated) => {
+                  // Update in all stores
+                  setActivePlaylist(updated);
+                  setImportedPls(prev => prev.map(p => p.id === updated.id ? updated : p));
+                  const existing = (() => { try { return JSON.parse(localStorage.getItem("arise:imported-playlists") || "[]"); } catch { return []; } })();
+                  const wasImported = existing.find(p => p.id === updated.id);
+                  if (wasImported) {
+                    localStorage.setItem("arise:imported-playlists", JSON.stringify(existing.map(p => p.id === updated.id ? updated : p)));
+                  }
+                  const session = getSession();
+                  if (session?.id) {
+                    const updatedUser = (session.playlists || []).map(p => p.id === updated.id ? updated : p);
+                    saveSession({ ...session, playlists: updatedUser });
+                    persistPlaylist(session.id, updated).catch(() => {});
+                  }
+                  toast("Playlist saved ✓");
+                }}
+                onDelete={(playlistId) => {
+                  setActivePlaylist(null);
+                  setImportedPls(prev => prev.filter(p => p.id !== playlistId));
+                  const existing = (() => { try { return JSON.parse(localStorage.getItem("arise:imported-playlists") || "[]"); } catch { return []; } })();
+                  localStorage.setItem("arise:imported-playlists", JSON.stringify(existing.filter(p => p.id !== playlistId)));
+                  const session = getSession();
+                  if (session?.id) {
+                    const updatedUser = (session.playlists || []).filter(p => p.id !== playlistId);
+                    saveSession({ ...session, playlists: updatedUser });
+                    import("@/lib/arise-auth").then(({ savePlaylistsToAccount }) => {
+                      savePlaylistsToAccount({ userId: session.id, playlists: updatedUser }).catch(() => {});
+                    });
+                  }
+                }}
+                onClose={() => setActivePlaylist(null)}
+              />
+            </div>
           )}
         </div>
       </div>

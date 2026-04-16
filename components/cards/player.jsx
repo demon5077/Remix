@@ -12,6 +12,7 @@ import {
   Volume2, VolumeX, X, ChevronUp, ListMusic, Shuffle,
 } from "lucide-react";
 import UnifiedModal from "./unified-modal";
+import AddToPlaylist from "@/components/playlist/add-to-playlist";
 
 // Animated waveform bars
 function WaveViz({ playing, color }) {
@@ -315,6 +316,20 @@ export default function Player() {
                   {((isSaavn ? saavn.queue : yt.queue) || []).length}
                 </span>
               </div>
+            )}
+
+            {/* Add to playlist */}
+            {(title) && (
+              <AddToPlaylist
+                song={{
+                  id:     isSaavn ? saavn.music : (yt.currentVideo?.id || null),
+                  ytId:   isYT ? yt.currentVideo?.id : null,
+                  name:   title,
+                  artist: sub,
+                  source: isSaavn ? "saavn" : "youtube",
+                }}
+                size="sm"
+              />
             )}
 
             {/* Volume */}
