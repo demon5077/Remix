@@ -18,6 +18,7 @@ import {
   searchAlbumByQuery,
 } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
+import { muzoTrending, muzoSearch, hasMuzoApi } from "@/lib/muzo";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
 
@@ -120,9 +121,27 @@ export default function HomePage() {
       if (r5?.data?.results?.length) setPunjabi(r5.data.results);   else setPunjabi([]);
     });
 
-    // ── YouTube data (real if API key present, demo otherwise) ──
+    // ── YouTube / Muzo trending ──────────────────────────────────────────
     const apiOk = hasApiKey();
     setYtHasKey(apiOk);
+
+    // Try Muzo trending first (no key needed), fall back to RapidAPI
+    muzoTrending().then(trending => {
+      const songs  = trending?.songs  || [];
+      const videos = trending?.videos || [];
+      const items  = [...songs, ...videos].slice(0, 12);
+      if (items.length) {
+        const normalised = items.map(item => ({
+          id:           item.videoId || item.id,
+          title:        item.title   || item.name,
+          channelTitle: item.artist  || item.channelTitle || "",
+          thumbnail:    item.thumbnail || (item.thumbnails?.[0]?.url) || `https://i.ytimg.com/vi/${item.videoId || item.id}/mqdefault.jpg`,
+          durationText: item.duration || "",
+        })).filter(i => i.id);
+        if (items.length) setYtTrending(items.length ? normalised : DEMO_YT);
+      }
+    }).catch(() => {});
+
     if (apiOk) {
       getTrending("IN", "music")
         .then(({ items }) => { if (items?.length) setYtTrending(items.slice(0, 12)); })
@@ -130,6 +149,19 @@ export default function HomePage() {
       searchYT("lofi chill music", "video")
         .then(({ items }) => { if (items?.length) setYtLofi(items.slice(0, 10)); })
         .catch(() => {});
+    } else {
+      // Use Muzo for lo-fi too
+      muzoSearch("lofi chill music", "videos", 8).then(items => {
+        if (items?.length) {
+          const normalised = items.map(i => ({
+            id:           i.videoId || i.id,
+            title:        i.title   || i.name,
+            channelTitle: i.artist  || i.channelTitle || "",
+            thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/mqdefault.jpg`,
+          })).filter(i => i.id);
+          if (normalised.length) setYtLofi(normalised);
+        }
+      }).catch(() => {});
     }
   }, []);
 

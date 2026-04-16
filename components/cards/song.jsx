@@ -1,6 +1,7 @@
 "use client";
 import { useMusicProvider } from "@/hooks/use-context";
 import { IoPlay } from "react-icons/io5";
+import AddToPlaylist from "@/components/playlist/add-to-playlist";
 
 export default function SongCard({ title, image, artist, id, desc }) {
   const ctx      = useMusicProvider();
@@ -82,7 +83,12 @@ export default function SongCard({ title, image, artist, id, desc }) {
           {title}
         </p>
         {desc && <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>{desc}</p>}
-        <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>{artist}</p>
+        <div className="flex items-center justify-between mt-0.5">
+          <p className="text-xs truncate" style={{ color: "#8888aa" }}>{artist}</p>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1">
+            <AddToPlaylist song={{ id, name: title, artist, source: "saavn" }} size="sm" />
+          </div>
+        </div>
       </div>
     </div>
   );
