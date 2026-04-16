@@ -6,8 +6,9 @@ import { useYT } from "@/hooks/use-youtube";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Music2, Youtube, PlayCircle, Import, LogIn, Trash2 } from "lucide-react";
+import { Music2, Youtube, PlayCircle, Import, LogIn, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function PlaylistsPage() {
   const auth   = useAuth();
@@ -19,10 +20,16 @@ export default function PlaylistsPage() {
   const [tracks,         setTracks]         = useState([]);
   const [loadingTracks,  setLoadingTracks]  = useState(false);
   const [activeSource,   setActiveSource]   = useState("all");
+  const [importedPls,    setImportedPls]    = useState([]);
 
   useEffect(() => {
     if (auth.googleUser)  auth.importGooglePlaylists();
     if (auth.spotifyUser) auth.importSpotifyPlaylists();
+    // Load imported playlists from localStorage
+    try {
+      const imp = JSON.parse(localStorage.getItem("arise:imported-playlists") || "[]");
+      setImportedPls(imp);
+    } catch {}
   }, [auth.googleUser, auth.spotifyUser]);
 
   const openPlaylist = async (playlist) => {
@@ -30,6 +37,12 @@ export default function PlaylistsPage() {
     setTracks([]);
     setLoadingTracks(true);
     try {
+      if (playlist.source === "imported") {
+        // Imported playlists store songs inline
+        setTracks(playlist.songs || []);
+        setLoadingTracks(false);
+        return;
+      }
       if (playlist.source === "youtube") {
         const items = await auth.getYouTubePlaylistTracks(playlist.id);
         setTracks(items.filter(t => t.id));
@@ -63,11 +76,14 @@ export default function PlaylistsPage() {
     }
   };
 
-  const filtered = auth.allPlaylists.filter(p =>
+  // Merge OAuth playlists + locally imported playlists
+  const importedForDisplay = importedPls.map(p => ({ ...p, source: "imported" }));
+  const allCombined = [...(auth.allPlaylists || []), ...importedForDisplay];
+  const filtered = allCombined.filter(p =>
     activeSource === "all" || p.source === activeSource
   );
 
-  if (!auth.isLoggedIn) {
+  if (!auth.isLoggedIn && importedPls.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] px-5 text-center">
         <LogIn className="w-12 h-12 mb-4" style={{ color: "#44445a" }} />
@@ -138,8 +154,8 @@ export default function PlaylistsPage() {
       </div>
 
       {/* Source filter */}
-      <div className="flex gap-2 mb-6">
-        {["all","youtube","spotify"].map(s => (
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {["all","youtube","spotify","imported"].map(s => (
           <button key={s} onClick={() => setActiveSource(s)}
             className="px-4 py-1.5 rounded-full text-xs font-bold transition-all"
             style={{

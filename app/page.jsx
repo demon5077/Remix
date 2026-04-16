@@ -18,6 +18,53 @@ import {
   searchAlbumByQuery,
 } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
+import { useMusicProvider } from "@/hooks/use-context";
+import { useYT } from "@/hooks/use-youtube";
+
+// ── Continue Listening widget ───────────────────────────────────────────
+function ContinueListening() {
+  const { recentlyPlayed, playSong } = useMusicProvider() || {};
+  const { getRecent, playVideo }     = useYT() || {};
+  const [ytRecent, setYtRecent]      = useState([]);
+
+  useEffect(() => {
+    if (getRecent) setYtRecent(getRecent().slice(0, 6));
+  }, []);
+
+  const saavnRecent = (recentlyPlayed || []).slice(0, 6);
+  if (!saavnRecent.length && !ytRecent.length) return null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-lg font-bold" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+            ⏱ Continue Listening
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: "#666688" }}>Pick up where you left off</p>
+        </div>
+        <a href="/recent" className="text-xs font-semibold" style={{ color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>See all →</a>
+      </div>
+      <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+        {saavnRecent.map(({ id }) => <SongCard key={id} id={id} />)}
+        {ytRecent.map(item => (
+          <button key={item.id} onClick={() => playVideo?.(item)}
+            className="flex-shrink-0 w-[160px] group cursor-pointer text-left">
+            <div className="relative overflow-hidden rounded-xl">
+              <img src={item.thumbnail} alt={item.title}
+                className="w-full h-[90px] object-cover transition-transform duration-500 group-hover:scale-110"
+                style={{ background: "rgba(18,18,32,0.6)" }} />
+              <div className="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[8px] font-bold"
+                style={{ background: "#FF0000", color: "white", fontFamily: "Orbitron, sans-serif" }}>YT</div>
+            </div>
+            <p className="text-xs font-semibold mt-2 truncate" style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+            <p className="text-[10px] truncate mt-0.5" style={{ color: "#666688" }}>{item.channelTitle}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 // ── Skeleton helpers ────────────────────────────────────────────────────
 const SONG_SKELETONS  = Array(8).fill(null);
@@ -106,6 +153,9 @@ export default function HomePage() {
 
         {/* ── Genre filters ────────────────────────────── */}
         <GenreFilters />
+
+        {/* ── Continue Listening (if recent history exists) ── */}
+        <ContinueListening />
 
         {/* ── YouTube Trending (demo cards if no API key) ─ */}
         <ScrollSection

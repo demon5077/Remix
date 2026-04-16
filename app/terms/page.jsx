@@ -70,7 +70,7 @@ const SECTIONS = [
   },
   {
     title: "13. Contact",
-    text: "For any questions about these Terms, please contact: legal@arise.pp.ua",
+    text: "For any questions about these Terms, please contact: legal@arise.music (placeholder — replace with actual contact before production deployment).",
   },
 ];
 

@@ -113,27 +113,25 @@ export function YTProvider({ children }) {
     setYtProgress(ytDuration > 0 ? (seconds / ytDuration) * 100 : 0);
   }, [ytCmd, ytDuration]);
 
-  // ── Poll getCurrentTime + getDuration every 500ms ─────────────────────
+  // ── Timer-based progress tracking (reliable cross-origin approach) ───────
+  // Since postMessage getCurrentTime doesn't reliably return values cross-origin,
+  // we use a 1-second timer to increment currentTime while playing.
+  // Duration is estimated from infoDelivery or defaults to 0 (progress shows as indeterminate).
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
 
     if (!state.playing || !state.currentVideo) return;
 
     pollRef.current = setInterval(() => {
-      try {
-        // Ask iframe for current time
-        iframeRef.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "command", func: "getCurrentTime", args: [] }), "*"
-        );
-        iframeRef.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "command", func: "getDuration",    args: [] }), "*"
-        );
-        // Also send listening event for infoDelivery
-        iframeRef.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "listening" }), "*"
-        );
-      } catch {}
-    }, 500);
+      setYtCurrentTime(prev => {
+        const next = prev + 1;
+        setYtDuration(dur => {
+          if (dur > 0) setYtProgress((next / dur) * 100);
+          return dur;
+        });
+        return next;
+      });
+    }, 1000);
 
     return () => clearInterval(pollRef.current);
   }, [state.playing, state.currentVideo]);
@@ -181,16 +179,19 @@ export function YTProvider({ children }) {
           ytCmd("playVideo");
         }
 
-        // ── infoDelivery: the key fix — extract currentTime & duration ──
+        // ── infoDelivery: capture duration when available ──
         if (data?.event === "infoDelivery" && data?.info) {
           const info = data.info;
+          const dur = typeof info.duration === "number" ? info.duration : null;
           const ct  = typeof info.currentTime === "number" ? info.currentTime : null;
-          const dur = typeof info.duration    === "number" ? info.duration    : null;
 
-          if (ct  !== null) setYtCurrentTime(ct);
           if (dur !== null && dur > 0) {
             setYtDuration(dur);
-            if (ct !== null) setYtProgress((ct / dur) * 100);
+            // Sync timer to real position if available
+            if (ct !== null) {
+              setYtCurrentTime(ct);
+              setYtProgress((ct / dur) * 100);
+            }
           }
 
           // Auto-advance near end
