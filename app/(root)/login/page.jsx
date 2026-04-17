@@ -10,17 +10,22 @@ import { toast } from "sonner";
 import Link from "next/link";
 import {
   registerUser, verifyEmail, loginUser, resendVerification,
-  getSession, saveSession, clearSession, updateSessionField,
-  persistPlaylist, persistManyPlaylists,
+  updateSessionField, persistPlaylist, persistManyPlaylists,
 } from "@/lib/arise-auth";
 import { parsePlaylistJSON, parseM3U } from "@/lib/playlist-parser";
 import {
   startGoogleLogin, startSpotifyLogin,
-  isGoogleLoggedIn, isSpotifyLoggedIn,
-  getGoogleProfile, getSpotifyProfile,
-  clearGoogleTokens, clearSpotifyTokens,
-  fetchYouTubePlaylists, fetchSpotifyPlaylists,
 } from "@/lib/auth";
+import {
+  isGoogleConnected as isGoogleLoggedIn,
+  isSpotifyConnected as isSpotifyLoggedIn,
+  getGoogleProfile, getSpotifyProfile,
+  clearGoogle as clearGoogleTokens,
+  clearSpotify as clearSpotifyTokens,
+  fetchYTPlaylists as fetchYouTubePlaylists,
+  fetchSpotifyPlaylists,
+  saveSession, getSession, clearSession,
+} from "@/lib/session";
 
 // ── Spotify SVG icon ───────────────────────────────────────────────────────────
 function SpotifyIcon({ size = 16 }) {
@@ -85,8 +90,20 @@ export default function LoginPage() {
     // Handle OAuth callback
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
-    if (connected === "google")  { toast.success("Google connected! 🎉"); window.history.replaceState({}, "", "/login"); }
-    if (connected === "spotify") { toast.success("Spotify connected! 🎉"); window.history.replaceState({}, "", "/login"); }
+    if (connected === "google") {
+      toast.success("Google connected! 🎉");
+      window.history.replaceState({}, "", "/login");
+      // Reload session (Google callback may have created one)
+      const fresh = getSession();
+      if (fresh) { setSession(fresh); loadUserData(fresh); }
+      // Fire global session change event
+      window.dispatchEvent(new CustomEvent("arise:session:changed"));
+    }
+    if (connected === "spotify") {
+      toast.success("Spotify connected! 🎉");
+      window.history.replaceState({}, "", "/login");
+      window.dispatchEvent(new CustomEvent("arise:session:changed"));
+    }
     const err = params.get("error");
     if (err) { toast.error(`Connection failed: ${decodeURIComponent(err)}`); window.history.replaceState({}, "", "/login"); }
   }, []);
@@ -114,6 +131,8 @@ export default function LoginPage() {
           // Phone: no verification needed
           saveSession(res.user);
           setSession(res.user);
+          loadUserData(res.user);
+          window.dispatchEvent(new CustomEvent("arise:session:changed"));
           toast.success(`Welcome to Arise, ${res.user.name}! 🔥`);
         }
       } else {
@@ -156,6 +175,7 @@ export default function LoginPage() {
     clearSession();
     setSession(null);
     setGooglePl([]); setSpotifyPl([]); setImportedPl([]);
+    window.dispatchEvent(new CustomEvent("arise:session:changed"));
     toast("Signed out");
   };
 
@@ -331,23 +351,53 @@ export default function LoginPage() {
         {/* ── Profile header ───────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 mb-6 p-5 rounded-2xl"
           style={{ background: "rgba(18,18,32,0.9)", border: "1px solid rgba(255,0,60,0.1)" }}>
-          {/* Avatar */}
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
-            style={{ background: "linear-gradient(135deg, #8B0000, #FF003C)", boxShadow: "0 0 24px rgba(255,0,60,0.35)" }}>
-            {googleProfile?.picture
-              ? <img src={googleProfile.picture} alt="avatar" className="w-full h-full rounded-2xl object-cover" />
-              : <User className="w-8 h-8 text-white" />}
+          {/* Avatar — Google photo, session avatar, or initials. Click to upload for email accounts */}
+          <label className="relative flex-shrink-0 cursor-pointer group"
+            title={session.authType === "google" ? "Google photo" : "Click to change photo"}>
+            <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #8B0000, #FF003C)", boxShadow: "0 0 24px rgba(255,0,60,0.35)" }}>
+              {(session.avatar || googleProfile?.picture)
+                ? <img src={session.avatar || googleProfile?.picture} alt="avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                : <span className="text-2xl font-black text-white" style={{ fontFamily: "Orbitron, sans-serif" }}>
+                    {(session.name || "?")[0].toUpperCase()}
+                  </span>}
+            </div>
+            {/* Upload overlay for non-Google accounts */}
+            {session.authType !== "google" && (
+              <>
+                <div className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: "rgba(0,0,0,0.6)" }}>
+                  <Upload className="w-5 h-5 text-white" />
+                </div>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                      const avatar = ev.target.result;
+                      const updated = { ...session, avatar };
+                      saveSession(updated);
+                      setSession(updated);
+                      window.dispatchEvent(new CustomEvent("arise:session:changed"));
+                      toast.success("Profile picture updated!");
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+              </>
+            )}
             {(googleProfile || spotifyProfile) && (
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
                 style={{ background: "#07070d", border: "2px solid rgba(255,0,60,0.2)" }}>
                 <CheckCircle className="w-3 h-3" style={{ color: "#22c55e" }} />
               </div>
             )}
-          </div>
+          </label>
+
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-black truncate" style={{ color: "#e8e8f8", fontFamily: "Orbitron, sans-serif" }}>{session.name}</h2>
             <p className="text-xs truncate mt-0.5" style={{ color: "#9999bb" }}>{session.identifier}</p>
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {session.verified && (
                 <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
                   style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
@@ -365,6 +415,9 @@ export default function LoginPage() {
                   style={{ background: "rgba(29,185,84,0.1)", border: "1px solid rgba(29,185,84,0.25)", color: "#1DB954" }}>
                   <SpotifyIcon size={10} /> Spotify
                 </span>
+              )}
+              {session.authType !== "google" && (
+                <span className="text-[10px]" style={{ color: "#44445a" }}>Click avatar to change photo</span>
               )}
             </div>
           </div>
