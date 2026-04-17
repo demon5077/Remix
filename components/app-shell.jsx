@@ -1,13 +1,18 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import Logo from "@/components/page/logo";
 import Search from "@/components/page/search";
 import Player from "@/components/cards/player";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
-import { Home, Search as SearchIcon, Library, Heart, Clock, Settings, ListMusic, Mic, Info, LogIn } from "lucide-react";
+import {
+  Home, Search as SearchIcon, Library, Heart, Clock,
+  Settings, ListMusic, Mic, Info, LogIn, User,
+} from "lucide-react";
 import AnimatedBackground from "@/components/home/animated-background";
+import { getAnyUser } from "@/lib/session";
 
 const NAV = [
   { href: "/",          icon: Home,       label: "Home"      },
@@ -22,12 +27,13 @@ const SIDEBAR_EXTRA = [
   { href: "/recent",   icon: Clock,    label: "Recently Played" },
   { href: "/settings", icon: Settings, label: "Settings"        },
   { href: "/about",    icon: Info,     label: "About"           },
-  { href: "/login",    icon: LogIn,    label: "Login"           },
+  { href: "/login",    icon: LogIn,    label: "Login / Profile" },
 ];
 
 const SIDEBAR_BOTTOM = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms",   label: "Terms"          },
+  { href: "/dmca",    label: "DMCA"           },
   { href: "/about",   label: "About"          },
 ];
 
@@ -42,13 +48,10 @@ export default function AppShell({ children }) {
       <AnimatedBackground />
 
       {/* ── Sidebar ─────────────────────────────────── */}
-      <aside
-        className="hidden md:flex flex-col w-56 flex-shrink-0 h-full overflow-hidden relative z-10"
-        style={{ background: "rgba(5,5,10,0.97)", borderRight: "1px solid rgba(255,0,60,0.07)" }}
-      >
+      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 h-full overflow-hidden relative z-10"
+        style={{ background: "rgba(5,5,10,0.97)", borderRight: "1px solid rgba(255,0,60,0.07)" }}>
         <div className="px-5 pt-6 pb-5 flex-shrink-0"><Logo /></div>
 
-        {/* Main nav */}
         <nav className="px-3 flex-shrink-0 space-y-0.5">
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
@@ -57,8 +60,7 @@ export default function AppShell({ children }) {
                 className={`remix-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${active ? "active" : ""}`}
                 style={{ color: active ? "#FF003C" : "#aaaacc", background: active ? "rgba(255,0,60,0.08)" : "transparent" }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ffffff"; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}
-              >
+                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="text-sm font-semibold">{label}</span>
               </Link>
@@ -66,12 +68,9 @@ export default function AppShell({ children }) {
           })}
         </nav>
 
-        {/* More section */}
         <div className="px-3 mt-5 flex-shrink-0">
           <p className="px-3 mb-2 text-[0.6rem] font-bold tracking-[0.2em] uppercase"
-            style={{ color: "#666688", fontFamily: "Orbitron, sans-serif" }}>
-            More
-          </p>
+            style={{ color: "#666688", fontFamily: "Orbitron, sans-serif" }}>More</p>
           <div className="space-y-0.5">
             {SIDEBAR_EXTRA.map(({ href, icon: Icon, label }) => {
               const active = path === href;
@@ -80,8 +79,7 @@ export default function AppShell({ children }) {
                   className={`remix-nav-item flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm ${active ? "active" : ""}`}
                   style={{ color: active ? "#FF003C" : "#aaaacc", background: active ? "rgba(255,0,60,0.08)" : "transparent" }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ffffff"; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}
-                >
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}>
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="font-semibold">{label}</span>
                 </Link>
@@ -92,21 +90,20 @@ export default function AppShell({ children }) {
 
         <div className="flex-1" />
 
-        {/* Bottom legal links */}
-        <div className="px-5 pb-5 flex-shrink-0 space-y-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)", paddingTop: "14px" }}>
+        <div className="px-5 pb-5 flex-shrink-0 space-y-2 border-t"
+          style={{ borderColor: "rgba(255,255,255,0.05)", paddingTop: "14px" }}>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {SIDEBAR_BOTTOM.map(({ href, label }) => (
               <Link key={label} href={href}
                 className="text-[11px] font-semibold transition-colors duration-150"
                 style={{ color: "#7777aa" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#7777aa"; }}
-              >
+                onMouseLeave={e => { e.currentTarget.style.color = "#7777aa"; }}>
                 {label}
               </Link>
             ))}
           </div>
-          <p style={{ color: "#555577", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+          <p style={{ color: "#555577", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif" }}>
             Arise · JioSaavn + YouTube
           </p>
           <p style={{ color: "#444466", fontSize: "0.55rem", fontFamily: "Rajdhani, sans-serif" }}>
@@ -129,7 +126,17 @@ export default function AppShell({ children }) {
   );
 }
 
+// ── TopBar shows user avatar if logged in ─────────────────────────────────────
 function TopBar() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const refresh = () => setUser(getAnyUser());
+    refresh();
+    window.addEventListener("arise:session:changed", refresh);
+    return () => window.removeEventListener("arise:session:changed", refresh);
+  }, []);
+
   return (
     <header className="flex-shrink-0 flex items-center px-4 md:px-6 h-14 gap-4"
       style={{
@@ -138,13 +145,25 @@ function TopBar() {
       }}>
       <div className="md:hidden flex-shrink-0"><Logo size="small" /></div>
       <div className="flex-1 max-w-lg mx-auto"><Search /></div>
+
+      {/* Avatar — shows Google photo or initials */}
       <Link href="/login"
-        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
-        style={{ background: "linear-gradient(135deg, #8B0000, #7C3AED)", boxShadow: "0 0 12px rgba(255,0,60,0.3)" }}>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="7" cy="5" r="2.5" fill="rgba(255,255,255,0.85)" />
-          <path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        </svg>
+        className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden transition-all hover:scale-105 flex items-center justify-center"
+        style={{
+          background:  user?.avatar ? "transparent" : "linear-gradient(135deg, #8B0000, #7C3AED)",
+          boxShadow:   "0 0 12px rgba(255,0,60,0.3)",
+          border:      user ? "2px solid rgba(255,0,60,0.4)" : "none",
+        }}>
+        {user?.avatar
+          ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          : user?.name
+            ? <span className="text-xs font-black text-white" style={{ fontFamily: "Orbitron, sans-serif" }}>
+                {user.name[0].toUpperCase()}
+              </span>
+            : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="5" r="2.5" fill="rgba(255,255,255,0.85)" />
+                <path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              </svg>}
       </Link>
     </header>
   );
@@ -156,7 +175,7 @@ function MobileNav({ path, hasPlayer }) {
     { href: "/search",    icon: SearchIcon, label: "Search"  },
     { href: "/podcasts",  icon: Mic,        label: "Podcasts"},
     { href: "/playlists", icon: ListMusic,  label: "Lists"   },
-    { href: "/login",     icon: LogIn,      label: "Login"   },
+    { href: "/login",     icon: LogIn,      label: "Profile" },
   ];
   return (
     <nav className="md:hidden fixed left-0 right-0 z-40 flex items-center justify-around px-1"

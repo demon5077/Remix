@@ -2,17 +2,20 @@
 /**
  * YTProvider — YouTube playback engine for Arise.
  *
- * KEY ARCHITECTURE:
- * - ONE fixed container div holds the iframe. NEVER moves, NEVER unmounts.
- * - Audio mode: container is 1×1px invisible — browser keeps playing audio.
- * - Video mode: container's CSS is set to cover the slot element's bounding rect.
+ * PROGRESS TRACKING (real, cross-origin):
+ * - The iframe URL includes `enablejsapi=1&origin=<window.origin>`
+ * - We send a `listening` postMessage every 250ms → YT responds with infoDelivery
+ * - infoDelivery contains {currentTime, duration, playerState, volume}
+ * - This is the only reliable way to get real-time progress cross-origin
  *
- * PROGRESS TRACKING (fixed):
- * - Poll getCurrentTime + getDuration every 500ms while playing.
- * - Expose ytCurrentTime, ytDuration, ytProgress (0-100) to all consumers.
- * - ytSeek(seconds) sends seekTo command to iframe.
+ * VIDEO/AUDIO SYNC:
+ * - ONE iframe, always in DOM. Mode switch = CSS repositioning only, no reload.
+ * - When switching audio→video, we seekTo the current time so video snaps in sync.
  */
-import { createContext, useContext, useCallback, useReducer, useRef, useEffect, useState } from "react";
+import {
+  createContext, useContext, useCallback, useReducer,
+  useRef, useEffect, useState,
+} from "react";
 
 const initial = {
   currentVideo: null,
@@ -83,20 +86,26 @@ export const YTContext = createContext(null);
 export const useYT = () => useContext(YTContext);
 
 export function YTProvider({ children }) {
-  const [state, dispatch]       = useReducer(reducer, initial);
-  const iframeRef               = useRef(null);
-  const containerRef            = useRef(null);
-  const [videoId,  setVideoId]  = useState(null);
-  const [ytVolume, setYtVolume] = useState(1);
-  const [ytMuted,  setYtMuted]  = useState(false);
-
-  // ── Real-time progress state ──────────────────────────────────────────
+  const [state, dispatch] = useReducer(reducer, initial);
+  const iframeRef         = useRef(null);
+  const containerRef      = useRef(null);
+  const [videoId,   setVideoId]   = useState(null);
+  const [ytVolume,  setYtVolume]  = useState(1);
+  const [ytMuted,   setYtMuted]   = useState(false);
   const [ytCurrentTime, setYtCurrentTime] = useState(0);
   const [ytDuration,    setYtDuration]    = useState(0);
-  const [ytProgress,    setYtProgress]    = useState(0); // 0-100
-  const pollRef = useRef(null);
+  const [ytProgress,    setYtProgress]    = useState(0);
 
-  // postMessage command helper
+  // Refs for values needed inside setInterval without stale closures
+  const playingRef     = useRef(false);
+  const currentTimeRef = useRef(0);
+  const durationRef    = useRef(0);
+  const pollRef        = useRef(null);
+  const listeningRef   = useRef(null);
+
+  useEffect(() => { playingRef.current = state.playing; }, [state.playing]);
+
+  // ── postMessage helper ────────────────────────────────────────────────
   const ytCmd = useCallback((cmd, args = []) => {
     try {
       iframeRef.current?.contentWindow?.postMessage(
@@ -105,45 +114,107 @@ export function YTProvider({ children }) {
     } catch {}
   }, []);
 
-  // ── Seek to a position (seconds) ─────────────────────────────────────
-  const ytSeek = useCallback((seconds) => {
-    ytCmd("seekTo", [seconds, true]);
-    // Optimistically update UI
-    setYtCurrentTime(seconds);
-    setYtProgress(ytDuration > 0 ? (seconds / ytDuration) * 100 : 0);
-  }, [ytCmd, ytDuration]);
-
-  // ── Timer-based progress tracking (reliable cross-origin approach) ───────
-  // Since postMessage getCurrentTime doesn't reliably return values cross-origin,
-  // we use a 1-second timer to increment currentTime while playing.
-  // Duration is estimated from infoDelivery or defaults to 0 (progress shows as indeterminate).
+  // ── Send "listening" every 250ms to trigger infoDelivery ─────────────
+  // This is the official way to get real-time currentTime from YT iframe API
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
+    if (listeningRef.current) clearInterval(listeningRef.current);
+    if (!state.currentVideo) return;
 
-    if (!state.playing || !state.currentVideo) return;
+    listeningRef.current = setInterval(() => {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: "listening", id: 1 }), "*"
+        );
+      } catch {}
+    }, 250);
 
-    pollRef.current = setInterval(() => {
-      setYtCurrentTime(prev => {
-        const next = prev + 1;
-        setYtDuration(dur => {
-          if (dur > 0) setYtProgress((next / dur) * 100);
-          return dur;
-        });
-        return next;
-      });
-    }, 1000);
+    return () => clearInterval(listeningRef.current);
+  }, [state.currentVideo?.id]);
 
-    return () => clearInterval(pollRef.current);
-  }, [state.playing, state.currentVideo]);
-
-  // Reset progress on video change
+  // ── Handle all messages from YT iframe ───────────────────────────────
   useEffect(() => {
+    const handler = (e) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (!data) return;
+
+        // State changes: 1=playing, 2=paused, 0=ended, 3=buffering, 5=cued
+        if (data.event === "onStateChange") {
+          const info = data.info;
+          if (info === 1)  dispatch({ type: "SET_PLAYING", payload: true  });
+          if (info === 2)  dispatch({ type: "SET_PLAYING", payload: false });
+          if (info === 0) {
+            dispatch({ type: "SET_PLAYING", payload: false });
+            dispatch({ type: "NEXT" });
+          }
+        }
+
+        // Ready: set volume and autoplay
+        if (data.event === "onReady") {
+          ytCmd("setVolume", [Math.round(ytVolume * 100)]);
+          ytCmd("playVideo");
+        }
+
+        // infoDelivery: real currentTime + duration every 250ms
+        if (data.event === "infoDelivery" && data.info) {
+          const { currentTime: ct, duration: dur, volume: vol, muted } = data.info;
+
+          if (typeof ct === "number" && ct >= 0) {
+            currentTimeRef.current = ct;
+            setYtCurrentTime(ct);
+            if (durationRef.current > 0) {
+              setYtProgress(Math.min(100, (ct / durationRef.current) * 100));
+            }
+          }
+
+          if (typeof dur === "number" && dur > 0) {
+            durationRef.current = dur;
+            setYtDuration(dur);
+            if (currentTimeRef.current > 0) {
+              setYtProgress(Math.min(100, (currentTimeRef.current / dur) * 100));
+            }
+          }
+
+          // Sync volume from iframe if changed externally
+          if (typeof vol === "number") {
+            const v = vol / 100;
+            setYtVolume(prev => Math.abs(prev - v) > 0.05 ? v : prev);
+          }
+
+          // Auto-advance 3 seconds before end (buffer for slow connections)
+          if (dur && dur > 10 && ct && dur - ct < 3 && playingRef.current) {
+            dispatch({ type: "SET_PLAYING", payload: false });
+            dispatch({ type: "NEXT" });
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [ytCmd, ytVolume]);
+
+  // Reset progress when video changes
+  useEffect(() => {
+    currentTimeRef.current = 0;
+    durationRef.current    = 0;
     setYtCurrentTime(0);
     setYtDuration(0);
     setYtProgress(0);
   }, [state.currentVideo?.id]);
 
-  // Volume control
+  // ── Seek ──────────────────────────────────────────────────────────────
+  const ytSeek = useCallback((seconds) => {
+    const clampedSecs = Math.max(0, Math.min(seconds, durationRef.current || seconds));
+    ytCmd("seekTo", [clampedSecs, true]);
+    currentTimeRef.current = clampedSecs;
+    setYtCurrentTime(clampedSecs);
+    if (durationRef.current > 0) {
+      setYtProgress(Math.min(100, (clampedSecs / durationRef.current) * 100));
+    }
+  }, [ytCmd]);
+
+  // ── Volume ────────────────────────────────────────────────────────────
   const changeYtVolume = useCallback((v) => {
     const clamped = Math.max(0, Math.min(1, v));
     setYtVolume(clamped);
@@ -158,55 +229,17 @@ export function YTProvider({ children }) {
     if (next) ytCmd("mute"); else ytCmd("unMute");
   }, [ytMuted, ytCmd]);
 
-  // ── Message handler — parse infoDelivery for time & duration ─────────
-  useEffect(() => {
-    const handler = (e) => {
-      try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (!data) return;
+  // ── Mode switch (audio ↔ video) with seek-to-sync ────────────────────
+  const setYtMode = useCallback((m) => {
+    dispatch({ type: "SET_YT_MODE", payload: m });
+    if (m === "audio") {
+      hideIframeContainer();
+    }
+    // When switching to video, we DON'T seek — the audio is already at the right position
+    // The iframe is the same element, so video resumes exactly where audio was
+  }, []);
 
-        if (data?.event === "onStateChange") {
-          if (data.info === 1) dispatch({ type: "SET_PLAYING", payload: true  });
-          if (data.info === 2) dispatch({ type: "SET_PLAYING", payload: false });
-          if (data.info === 0) {
-            dispatch({ type: "SET_PLAYING", payload: false });
-            dispatch({ type: "NEXT" });
-          }
-        }
-
-        if (data?.event === "onReady") {
-          ytCmd("setVolume", [Math.round(ytVolume * 100)]);
-          ytCmd("playVideo");
-        }
-
-        // ── infoDelivery: capture duration when available ──
-        if (data?.event === "infoDelivery" && data?.info) {
-          const info = data.info;
-          const dur = typeof info.duration === "number" ? info.duration : null;
-          const ct  = typeof info.currentTime === "number" ? info.currentTime : null;
-
-          if (dur !== null && dur > 0) {
-            setYtDuration(dur);
-            // Sync timer to real position if available
-            if (ct !== null) {
-              setYtCurrentTime(ct);
-              setYtProgress((ct / dur) * 100);
-            }
-          }
-
-          // Auto-advance near end
-          if (dur && dur > 10 && ct && dur - ct < 2) {
-            dispatch({ type: "SET_PLAYING", payload: false });
-            dispatch({ type: "NEXT" });
-          }
-        }
-      } catch {}
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [ytCmd, ytVolume]);
-
-  // Mutual exclusion — pause when Saavn fires
+  // ── Mutual exclusion ──────────────────────────────────────────────────
   useEffect(() => {
     const handler = () => {
       ytCmd("pauseVideo");
@@ -216,7 +249,6 @@ export function YTProvider({ children }) {
     return () => window.removeEventListener("arise:saavn:playing", handler);
   }, [ytCmd]);
 
-  // When YT plays → pause Saavn
   useEffect(() => {
     if (state.playing && state.currentVideo) {
       window.dispatchEvent(new CustomEvent("arise:yt:playing"));
@@ -228,7 +260,7 @@ export function YTProvider({ children }) {
     setVideoId(state.currentVideo ? state.currentVideo.id : null);
   }, [state.currentVideo?.id]);
 
-  // Public API
+  // ── Public API ────────────────────────────────────────────────────────
   const playVideo       = useCallback((v) => dispatch({ type: "PLAY", payload: v }), []);
   const ytPlay          = useCallback(() => { ytCmd("playVideo");  dispatch({ type: "SET_PLAYING", payload: true  }); }, [ytCmd]);
   const ytPause         = useCallback(() => { ytCmd("pauseVideo"); dispatch({ type: "SET_PLAYING", payload: false }); }, [ytCmd]);
@@ -236,7 +268,7 @@ export function YTProvider({ children }) {
   const next            = useCallback(() => dispatch({ type: "NEXT" }), []);
   const prev            = useCallback(() => dispatch({ type: "PREV" }), []);
   const addToQueue      = useCallback((v) => dispatch({ type: "ADD_TO_QUEUE", payload: v }), []);
-  const setQueue        = useCallback((q) => dispatch({ type: "SET_QUEUE", payload: q }), []);
+  const setQueue        = useCallback((fn) => dispatch({ type: "SET_QUEUE", payload: typeof fn === "function" ? fn(state.queue) : fn }), [state.queue]);
   const removeFromQueue = useCallback((i) => dispatch({ type: "REMOVE_FROM_QUEUE", payload: i }), []);
   const toggleShuffle   = useCallback(() => dispatch({ type: "TOGGLE_SHUFFLE" }), []);
   const stop            = useCallback(() => {
@@ -245,11 +277,7 @@ export function YTProvider({ children }) {
     setVideoId(null);
     hideIframeContainer();
   }, [ytCmd]);
-  const setRepeat   = useCallback((r) => dispatch({ type: "SET_REPEAT", payload: r }), []);
-  const setYtMode   = useCallback((m) => {
-    dispatch({ type: "SET_YT_MODE", payload: m });
-    if (m === "audio") hideIframeContainer();
-  }, []);
+  const setRepeat = useCallback((r) => dispatch({ type: "SET_REPEAT", payload: r }), []);
 
   const getLiked   = useCallback(() => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]"); } catch { return []; } }, []);
   const toggleLike = useCallback((video) => {
@@ -260,10 +288,9 @@ export function YTProvider({ children }) {
       ));
     } catch {}
   }, []);
-  const isLiked  = useCallback((id) => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").some(v => v.id === id); } catch { return false; } }, []);
+  const isLiked   = useCallback((id) => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").some(v => v.id === id); } catch { return false; } }, []);
   const getRecent = useCallback(() => { try { return JSON.parse(localStorage.getItem("arise:yt:recent") || "[]"); } catch { return []; } }, []);
 
-  // Format time helper
   const ytFormatTime = useCallback((s) => {
     if (!s || isNaN(s)) return "0:00";
     const h = Math.floor(s / 3600);
@@ -277,7 +304,6 @@ export function YTProvider({ children }) {
     <YTContext.Provider value={{
       ...state, iframeRef, containerRef,
       ytVolume, ytMuted, changeYtVolume, toggleYtMute,
-      // Real progress values
       ytCurrentTime, ytDuration, ytProgress, ytSeek, ytFormatTime,
       playVideo, togglePlay, ytPlay, ytPause,
       next, prev, addToQueue, setQueue, removeFromQueue,
@@ -285,9 +311,10 @@ export function YTProvider({ children }) {
       getLiked, toggleLike, isLiked, getRecent,
     }}>
       {/*
-        FIXED CONTAINER — always in DOM, never moved.
-        Audio: 1×1px, opacity 0 → audio keeps playing silently
-        Video: JS sets top/left/width/height to cover the modal slot
+        SINGLE FIXED IFRAME — never unmounts, never moves.
+        audio mode: 1×1px invisible — audio keeps playing.
+        video mode: positioned over the modal slot via showIframeOverElement().
+        The SAME iframe element handles both — no reload, perfect A/V sync.
       */}
       <div
         ref={containerRef}
@@ -304,14 +331,14 @@ export function YTProvider({ children }) {
           overflow:      "hidden",
           background:    "#000",
           borderRadius:  "0",
-          transition:    "opacity 0.2s",
+          transition:    "opacity 0.15s",
         }}
       >
         {videoId && (
           <iframe
             ref={iframeRef}
             key={videoId}
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=1`}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=1&origin=${typeof window !== "undefined" ? window.location.origin : ""}`}
             title="Arise YT Player"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
@@ -332,28 +359,32 @@ export function showIframeOverElement(el) {
   requestAnimationFrame(() => {
     const r = el.getBoundingClientRect();
     if (r.width < 10 || r.height < 10) return;
-    c.style.top           = `${r.top}px`;
-    c.style.left          = `${r.left}px`;
-    c.style.width         = `${r.width}px`;
-    c.style.height        = `${r.height}px`;
-    c.style.opacity       = "1";
-    c.style.pointerEvents = "auto";
-    c.style.zIndex        = "65";
-    c.style.borderRadius  = "12px";
-    c.style.overflow      = "hidden";
-    c.style.transition    = "none";
+    Object.assign(c.style, {
+      top:           `${r.top}px`,
+      left:          `${r.left}px`,
+      width:         `${r.width}px`,
+      height:        `${r.height}px`,
+      opacity:       "1",
+      pointerEvents: "auto",
+      zIndex:        "65",
+      borderRadius:  "12px",
+      overflow:      "hidden",
+      transition:    "none",
+    });
   });
 }
 
 export function hideIframeContainer() {
   const c = document.getElementById("arise-yt-container");
   if (!c) return;
-  c.style.top           = "0";
-  c.style.left          = "0";
-  c.style.width         = "1px";
-  c.style.height        = "1px";
-  c.style.opacity       = "0";
-  c.style.pointerEvents = "none";
-  c.style.zIndex        = "-1";
-  c.style.borderRadius  = "0";
+  Object.assign(c.style, {
+    top:           "0",
+    left:          "0",
+    width:         "1px",
+    height:        "1px",
+    opacity:       "0",
+    pointerEvents: "none",
+    zIndex:        "-1",
+    borderRadius:  "0",
+  });
 }
