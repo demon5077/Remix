@@ -35,7 +35,7 @@ export default function ArtistsPage() {
             return {
               name,
               id:        a?.browseId || a?.artistId || null,
-              thumbnail: a?.thumbnails?.[0]?.url || a?.thumbnail || null,
+              thumbnail: a?.thumbnails?.[2]?.url || a?.thumbnails?.[1]?.url || a?.thumbnails?.[0]?.url || a?.thumbnail || null,
             };
           } catch { return { name, id: null, thumbnail: null }; }
         })
@@ -148,7 +148,7 @@ function ArtistCard({ name, thumbnail, onClick }) {
   const initials = name?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
   return (
     <button onClick={onClick} className="group flex flex-col items-center gap-2 text-center">
-      <div className="w-full aspect-square rounded-full overflow-hidden transition-transform duration-300 group-hover:scale-105"
+      <div className="w-full aspect-square rounded-full overflow-hidden transition-transform duration-300 group-hover:scale-105" style={{ imageRendering: "crisp-edges" }}
         style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))", boxShadow: "0 4px 20px var(--accent-glow)" }}>
         {thumbnail
           ? <img src={thumbnail} alt={name} className="w-full h-full object-cover" />

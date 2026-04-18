@@ -35,7 +35,9 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
   const saavn = useMusicProvider() || {};
   const yt    = useYT() || {};
 
-  const [tab,       setTab]      = useState(activeSource || "saavn");
+  // Auto-detect the correct tab from what is currently playing
+  const computedTab = yt.currentVideo ? "yt" : (saavn.music ? "saavn" : "yt");
+  const [tab, setTab] = useState(computedTab);
   const videoSlotRef             = useRef(null);
 
   // Saavn state
@@ -51,6 +53,12 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
   const [ytTab,      setYtTab]     = useState("queue");
 
   // Sync tab with source
+  // Sync tab whenever playback source changes
+  useEffect(() => {
+    if (yt.currentVideo) setTab("yt");
+    else if (saavn.music) setTab("saavn");
+  }, [yt.currentVideo?.id, saavn.music]);
+  
   useEffect(() => { if (activeSource) setTab(activeSource); }, [activeSource]);
 
   // ── Position iframe over the video slot ──────────────────────────

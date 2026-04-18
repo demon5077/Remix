@@ -33,8 +33,8 @@
     @apply bg-background text-foreground select-none;
     font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
     letter-spacing: 0.015em;
-    background: var(--bg-primary, #07070d);
-    color: var(--text-primary, #e8e8f8);
+    background: var(--bg-primary);
+    color: var(--text-primary);
     transition: background 0.4s ease, color 0.4s ease;
   }
 
@@ -54,6 +54,7 @@
   }
 
   /* Ambient background orbs */
+  /* remix-bg orbs */
   .remix-bg::before {
     content: '';
     position: fixed;
@@ -266,7 +267,8 @@ body {
 }
 
 /* Light theme nav/topbar overrides */
-[data-theme="light"] .remix-bg::before {
+[data-theme="light"] /* remix-bg orbs */
+  .remix-bg::before {
   background: radial-gradient(ellipse, rgba(255,215,0,0.12) 0%, transparent 70%) !important;
 }
 [data-theme="light"] .remix-bg::after {
@@ -296,108 +298,100 @@ body {
 /* But not for transforms/animations */
 [class*="animate-"], [style*="animation"] { transition: none !important; }
 
+
 /* ═══════════════════════════════════════════════════════════════
-   LIGHT THEME GLOBAL OVERRIDES
-   Forces all hardcoded dark backgrounds to use CSS vars.
-   Applied when data-theme="light" on html/body.
+   LIGHT THEME — Class-based, works on all children
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Base body & root ──────────────────────────────────────────── */
-[data-theme="light"] {
-  background: var(--bg-primary);
-  color: var(--text-primary);
+/* Apply light theme variables when data-theme=light on ANY ancestor */
+[data-theme="light"] * {
+  --bg-primary:      #fdfbf4;
+  --bg-secondary:    rgba(255,252,240,0.97);
+  --bg-card:         rgba(255,250,228,0.92);
+  --bg-card-hover:   rgba(255,247,210,0.97);
+  --bg-elevated:     rgba(255,254,246,0.99);
+  --border-primary:  rgba(212,175,55,0.35);
+  --border-subtle:   rgba(212,175,55,0.18);
+  --text-primary:    #1a1208;
+  --text-secondary:  #3d3010;
+  --text-muted:      #7a6830;
+  --text-faint:      #b09840;
+  --accent:          #c9a227;
+  --accent-2:        #a07c10;
+  --accent-glow:     rgba(201,162,39,0.45);
+  --nav-bg:          rgba(255,252,232,0.98);
+  --topbar-bg:       rgba(255,252,232,0.96);
+  --player-bg:       rgba(255,251,228,0.99);
+  --sidebar-bottom-text: #7a6830;
+  scrollbar-color:   #c9a227 transparent;
 }
 
-/* ── All dark card backgrounds ─────────────────────────────────── */
-[data-theme="light"] [style*="rgba(18,18,32"],
-[data-theme="light"] [style*="rgba(10,10,20"],
-[data-theme="light"] [style*="rgba(14,14,26"],
-[data-theme="light"] [style*="rgba(12,12,22"],
-[data-theme="light"] [style*="rgba(8,8,16"],
-[data-theme="light"] [style*="rgba(5,5,10"],
-[data-theme="light"] [style*="rgba(4,4,9"],
-[data-theme="light"] [style*="background: \"#07070d\""],
-[data-theme="light"] [style*="background:#07070d"] {
-  background: var(--bg-card) !important;
-  border-color: var(--border-subtle) !important;
+/* Body background in light */
+[data-theme="light"] body {
+  background: #fdfbf4 !important;
+  color: #1a1208 !important;
 }
 
-/* ── Fixed nav, topbar, player ─────────────────────────────────── */
-[data-theme="light"] .fixed,
-[data-theme="light"] header,
-[data-theme="light"] aside,
-[data-theme="light"] nav {
-  background: var(--nav-bg) !important;
+/* All fixed/sticky bars in light mode */
+[data-theme="light"] header {
+  background: rgba(255,252,232,0.96) !important;
+  border-bottom-color: rgba(212,175,55,0.25) !important;
 }
 
-/* ── Player bar specifically ───────────────────────────────────── */
-[data-theme="light"] .arise-player {
-  background: var(--player-bg) !important;
-  border-top-color: var(--border-primary) !important;
+[data-theme="light"] aside {
+  background: rgba(255,252,232,0.98) !important;
+  border-right-color: rgba(212,175,55,0.2) !important;
 }
 
-/* ── Modal / overlay backgrounds ──────────────────────────────── */
-[data-theme="light"] .arise-modal-bg {
-  background: rgba(255, 252, 230, 0.97) !important;
+/* The main AppShell background */
+[data-theme="light"] .remix-bg {
+  background: #fdfbf4 !important;
 }
 
-/* ── All dark text colors ──────────────────────────────────────── */
-[data-theme="light"] [style*="color: \"#e8e8f8\""],
-[data-theme="light"] [style*="color: \"#ccccee\""],
-[data-theme="light"] [style*="color: \"#e8e8f8\""] {
-  color: var(--text-primary) !important;
-}
-
-/* ── Search dropdown ───────────────────────────────────────────── */
-[data-theme="light"] .arise-search-dropdown {
-  background: var(--bg-elevated) !important;
-  border-color: var(--border-primary) !important;
-}
-
-/* ── Footer ────────────────────────────────────────────────────── */
-[data-theme="light"] footer,
-[data-theme="light"] .arise-footer {
-  background: rgba(255, 252, 220, 0.95) !important;
-  border-top-color: rgba(212, 175, 55, 0.3) !important;
-}
-[data-theme="light"] footer p,
-[data-theme="light"] footer span,
-[data-theme="light"] footer a {
-  color: var(--text-secondary) !important;
-}
-
-/* ── Progress bars ─────────────────────────────────────────────── */
-[data-theme="light"] .arise-progress-track {
-  background: rgba(212, 175, 55, 0.15) !important;
-}
-
-/* ── Input / form fields ───────────────────────────────────────── */
+/* Inputs */
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea {
-  background: rgba(255, 252, 235, 0.9) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-primary) !important;
+  background: rgba(255,252,235,0.95) !important;
+  color: #1a1208 !important;
+  border-color: rgba(212,175,55,0.4) !important;
+}
+[data-theme="light"] input::placeholder {
+  color: #b09840 !important;
 }
 
-/* ── Scrollbars ────────────────────────────────────────────────── */
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #c9a227, #a07c10) !important;
+}
 [data-theme="light"] ::-webkit-scrollbar-track {
-  background: rgba(212, 175, 55, 0.05);
+  background: rgba(212,175,55,0.05) !important;
 }
 
-/* ── Shimmer animation in light ────────────────────────────────── */
-[data-theme="light"] .remix-shimmer {
+/* All modals / full-screen overlays */
+[data-theme="light"] .arise-modal-overlay {
+  background: rgba(255,252,228,0.97) !important;
+}
+
+/* Fixed bottom player */
+[data-theme="light"] .arise-player {
+  background: rgba(255,251,228,0.99) !important;
+  border-top-color: rgba(212,175,55,0.3) !important;
+}
+
+/* Shimmer in light */
+[data-theme="light"] .remix-shimmer,
+[data-theme="light"] [class*="shimmer"] {
   background: linear-gradient(
     90deg,
-    rgba(212, 175, 55, 0.08) 25%,
-    rgba(212, 175, 55, 0.22) 50%,
-    rgba(212, 175, 55, 0.08) 75%
+    rgba(212,175,55,0.1) 0%,
+    rgba(212,175,55,0.25) 50%,
+    rgba(212,175,55,0.1) 100%
   ) !important;
-  background-size: 200% 100% !important;
-  animation: shimmer 1.5s infinite !important;
+  animation: shimmerGold 1.5s infinite !important;
 }
 
-/* ── Video player iframe container ─────────────────────────────── */
-[data-theme="light"] #arise-yt-container {
-  box-shadow: 0 8px 40px rgba(212, 175, 55, 0.3) !important;
+@keyframes shimmerGold {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }

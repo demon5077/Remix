@@ -19,6 +19,7 @@ import {
 } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
 import { muzoTrending, muzoSearch, hasMuzoApi } from "@/lib/muzo";
+import { toast } from "sonner";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
 
@@ -90,6 +91,7 @@ const DEMO_PODCASTS = [
 ];
 
 export default function HomePage() {
+  const yt = useYT() || {};
   const [latest,     setLatest]     = useState(SONG_SKELETONS);
   const [trending,   setTrending]   = useState(SONG_SKELETONS);
   const [albums,     setAlbums]     = useState(ALBUM_SKELETONS);
@@ -100,6 +102,7 @@ export default function HomePage() {
   const [ytHasKey,   setYtHasKey]   = useState(false);
   const [podcastPod, setPodcastPod] = useState(null);
   const [playingPod, setPlayingPod] = useState(null);
+  const [podcasts,   setPodcasts]   = useState([]);
   const fetched = useRef(false);
 
   useEffect(() => {
@@ -283,12 +286,19 @@ export default function HomePage() {
           )}
         </ScrollSection>
 
-        {/* ── Podcasts ─────────────────────────────────── */}
-        <ScrollSection title="🎙️ Podcasts" subtitle="Stories from the underground" href="/podcasts">
-          {DEMO_PODCASTS.map(pod => (
+        {/* ── Podcasts (live from YouTube Music via Muzo) ── */}
+        <ScrollSection title="🎙️ Podcasts" subtitle="Live from YouTube Music" href="/podcasts">
+          {(podcasts.length > 0 ? podcasts : DEMO_PODCASTS).slice(0, 8).map(pod => (
             <PodcastCard key={pod.id} {...pod}
               isPlaying={playingPod === pod.id}
-              onPlay={() => { setPlayingPod(pod.id); setPodcastPod(pod); }} />
+              onPlay={() => {
+                if (pod.ytId) {
+                  yt?.playVideo?.({ id: pod.ytId, title: pod.title, channelTitle: pod.host, thumbnail: pod.image });
+                  toast(`🎙 ${(pod.title || "").slice(0,40)}`);
+                }
+                setPlayingPod(pod.id);
+                setPodcastPod(pod);
+              }} />
           ))}
         </ScrollSection>
 
