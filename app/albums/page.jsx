@@ -32,7 +32,13 @@ export default function AlbumsPage() {
     const q = GENRES.find(x => x.id === g)?.q || g;
     try {
       const results = await muzoSearch(q, "albums", 20);
-      setAlbums((results || []).filter(a => a.browseId || a.id).slice(0, 20));
+      const mapped = (results || []).filter(a => a.browseId || a.id).map(a => ({
+        ...a,
+        thumbnail: a.thumbnails?.[2]?.url || a.thumbnails?.[1]?.url || a.thumbnails?.[0]?.url
+                   || a.thumbnail || a.coverArt
+                   || (a.videoId ? `https://i.ytimg.com/vi/${a.videoId}/hqdefault.jpg` : ""),
+      }));
+      setAlbums(mapped.slice(0, 20));
     } catch { toast.error("Failed to load albums"); }
     setLoading(false);
   };

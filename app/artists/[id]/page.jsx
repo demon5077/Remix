@@ -41,7 +41,7 @@ export default function ArtistDetailPage() {
           id:           s.videoId || s.id,
           title:        s.title   || s.name,
           artist:       (s.artists||[]).map(a=>a.name||a).join(", ") || artistName,
-          thumbnail:    s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/mqdefault.jpg`,
+          thumbnail:    s.thumbnails?.[2]?.url || s.thumbnails?.[1]?.url || s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/hqdefault.jpg`,
           duration:     s.duration || "",
         })).filter(s => s.id);
         foundAlbums = topAlbums.map(a => ({
@@ -76,7 +76,7 @@ export default function ArtistDetailPage() {
               id:           s.videoId || s.id,
               title:        s.title   || s.name,
               artist:       (s.artists||[]).map(a=>a.name||a).join(", ") || artistName,
-              thumbnail:    s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/mqdefault.jpg`,
+              thumbnail:    s.thumbnails?.[2]?.url || s.thumbnails?.[1]?.url || s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/hqdefault.jpg`,
               duration:     s.duration || "",
             }))
             .filter(s => s.id);
@@ -89,7 +89,7 @@ export default function ArtistDetailPage() {
             id:           s.videoId || s.id,
             title:        s.title   || s.name,
             artist:       (s.artists||[]).map(a=>a.name||a).join(", ") || artistName,
-            thumbnail:    s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/mqdefault.jpg`,
+            thumbnail:    s.thumbnails?.[2]?.url || s.thumbnails?.[1]?.url || s.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${s.videoId||s.id}/hqdefault.jpg`,
           })).filter(s => s.id);
         }
       } catch {}
