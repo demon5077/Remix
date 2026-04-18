@@ -34,7 +34,7 @@ export default function Footer() {
   return (
     <footer
       className="relative mt-12 overflow-hidden"
-      style={{ borderTop: "1px solid rgba(255,0,60,0.08)" }}
+      style={{ borderTop: "1px solid var(--border-primary)" }}
     >
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[1px] pointer-events-none"
@@ -43,12 +43,12 @@ export default function Footer() {
 
       <div
         className="px-6 md:px-8 lg:px-12 py-10"
-        style={{ background: "rgba(5,5,10,0.6)", backdropFilter: "blur(20px)" }}
+        style={{ background: "var(--bg-secondary)", backdropFilter: "blur(20px)" }}
       >
         <div className="flex flex-col items-center mb-8 text-center">
           <p
             className="text-[10px] mb-1.5 tracking-[0.3em] uppercase"
-            style={{ color: "#9999bb", fontFamily: "Orbitron, sans-serif" }}
+            style={{ color: "var(--text-secondary)", fontFamily: "Orbitron, sans-serif" }}
           >
             ✦ crafted in darkness ✦
           </p>
@@ -77,9 +77,9 @@ export default function Footer() {
                 key={label}
                 href={href}
                 className="text-xs transition-all duration-200"
-                style={{ color: "#9999bb", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}
+                style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#9999bb"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-secondary)"; }}
               >
                 {label}
               </Link>
@@ -95,19 +95,19 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 aria-label={label}
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
-                style={{ color: "#44445a", border: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}
+                style={{ color: "var(--text-muted)", border: "1px solid var(--border-subtle)", background: "var(--bg-card)" }}
                 onMouseEnter={e => {
                   e.currentTarget.style.color = "#FF003C";
                   e.currentTarget.style.borderColor = "rgba(255,0,60,0.4)";
                   e.currentTarget.style.boxShadow = "0 0 14px rgba(255,0,60,0.3)";
-                  e.currentTarget.style.background = "rgba(255,0,60,0.06)";
+                  e.currentTarget.style.background = "color-mix(in srgb, var(--accent) 6%, transparent)";
                   e.currentTarget.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = "#9999bb";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                  e.currentTarget.style.borderColor = "var(--border-subtle)";
                   e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+                  e.currentTarget.style.background = "var(--bg-card)";
                   e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
@@ -117,10 +117,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.03)" }}>
+        <div className="mt-6 pt-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
           <p
             className="text-center text-[10px] tracking-[0.06em]"
-            style={{ color: "#8888bb", fontFamily: "Rajdhani, sans-serif" }}
+            style={{ color: "var(--text-muted)", fontFamily: "Rajdhani, sans-serif" }}
           >
             © {new Date().getFullYear()} Arise · Powered by JioSaavn API &amp; YouTube · Educational purposes only.
           </p>

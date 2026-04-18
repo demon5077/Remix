@@ -41,17 +41,17 @@ function Field({ icon: Icon, label, type = "text", value, onChange, placeholder,
   return (
     <div>
       <label className="text-xs font-bold mb-1.5 block"
-        style={{ color: "#9999bb", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>
+        style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>
         {label}
       </label>
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#666688" }} />
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
         <input type={type} value={value} onChange={onChange} placeholder={placeholder}
           className="w-full pl-10 py-3 rounded-xl text-sm outline-none transition-all"
           style={{
             paddingRight: right ? "40px" : "16px",
-            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-            color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif",
+            background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.1)",
+            color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif",
           }}
           onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,0,60,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(255,0,60,0.08)"; }}
           onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }} />
@@ -98,6 +98,11 @@ export default function LoginPage() {
       if (fresh) { setSession(fresh); loadUserData(fresh); }
       // Fire global session change event
       window.dispatchEvent(new CustomEvent("arise:session:changed"));
+    }
+    const spotifyErr = params.get("error");
+    if (spotifyErr === "spotify_premium_required") {
+      toast.error("Spotify Premium required for OAuth. Using free YouTube Music instead.", { duration: 6000 });
+      window.history.replaceState({}, "", "/login");
     }
     if (connected === "spotify") {
       toast.success("Spotify connected! 🎉");
@@ -294,18 +299,18 @@ export default function LoginPage() {
               style={{ background: "rgba(255,0,60,0.1)", border: "1px solid rgba(255,0,60,0.3)" }}>
               <Mail className="w-8 h-8" style={{ color: "#FF003C" }} />
             </div>
-            <h1 className="text-2xl font-black mb-2" style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8" }}>Check Your Email</h1>
-            <p className="text-sm" style={{ color: "#9999bb" }}>We sent a 6-digit code to<br /><span style={{ color: "#FF003C" }}>{pendingId}</span></p>
+            <h1 className="text-2xl font-black mb-2" style={{ fontFamily: "Orbitron, sans-serif", color: "var(--text-primary)" }}>Check Your Email</h1>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>We sent a 6-digit code to<br /><span style={{ color: "#FF003C" }}>{pendingId}</span></p>
           </div>
 
-          <div className="p-7 rounded-2xl" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(255,0,60,0.12)" }}>
+          <div className="p-7 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,0,60,0.12)" }}>
             <form onSubmit={handleVerify} className="space-y-4">
               <div>
-                <label className="text-xs font-bold mb-1.5 block" style={{ color: "#9999bb", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>VERIFICATION CODE</label>
+                <label className="text-xs font-bold mb-1.5 block" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>VERIFICATION CODE</label>
                 <input type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="000000" maxLength={6}
                   className="w-full py-4 rounded-xl text-3xl font-black text-center outline-none tracking-[0.5em] transition-all"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#FF003C", fontFamily: "Orbitron, sans-serif" }}
+                  style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.1)", color: "#FF003C", fontFamily: "Orbitron, sans-serif" }}
                   onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,0,60,0.5)"; }}
                   onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }} />
               </div>
@@ -317,12 +322,12 @@ export default function LoginPage() {
               </button>
             </form>
             <div className="mt-4 text-center">
-              <button onClick={handleResend} className="text-xs" style={{ color: "#666688" }}>
+              <button onClick={handleResend} className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Didn't get it? <span style={{ color: "#FF003C" }}>Resend code</span>
               </button>
             </div>
             <div className="mt-3 text-center">
-              <button onClick={() => setStep("form")} className="text-xs" style={{ color: "#444466" }}>← Back to sign in</button>
+              <button onClick={() => setStep("form")} className="text-xs" style={{ color: "var(--text-faint)" }}>← Back to sign in</button>
             </div>
           </div>
         </div>
@@ -350,7 +355,7 @@ export default function LoginPage() {
 
         {/* ── Profile header ───────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 mb-6 p-5 rounded-2xl"
-          style={{ background: "rgba(18,18,32,0.9)", border: "1px solid rgba(255,0,60,0.1)" }}>
+          style={{ background: "var(--bg-card)", border: "1px solid rgba(255,0,60,0.1)" }}>
           {/* Avatar — Google photo, session avatar, or initials. Click to upload for email accounts */}
           <label className="relative flex-shrink-0 cursor-pointer group"
             title={session.authType === "google" ? "Google photo" : "Click to change photo"}>
@@ -395,8 +400,8 @@ export default function LoginPage() {
           </label>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-black truncate" style={{ color: "#e8e8f8", fontFamily: "Orbitron, sans-serif" }}>{session.name}</h2>
-            <p className="text-xs truncate mt-0.5" style={{ color: "#9999bb" }}>{session.identifier}</p>
+            <h2 className="text-xl font-black truncate" style={{ color: "var(--text-primary)", fontFamily: "Orbitron, sans-serif" }}>{session.name}</h2>
+            <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{session.identifier}</p>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {session.verified && (
                 <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
@@ -417,13 +422,13 @@ export default function LoginPage() {
                 </span>
               )}
               {session.authType !== "google" && (
-                <span className="text-[10px]" style={{ color: "#44445a" }}>Click avatar to change photo</span>
+                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>Click avatar to change photo</span>
               )}
             </div>
           </div>
           <button onClick={handleLogout}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 transition-all"
-            style={{ background: "rgba(255,0,60,0.08)", border: "1px solid rgba(255,0,60,0.15)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
+            style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid rgba(255,0,60,0.15)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
             <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>
@@ -435,9 +440,9 @@ export default function LoginPage() {
               className="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all"
               style={{
                 fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em",
-                background: activeTab === t.id ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.04)",
+                background: activeTab === t.id ? "color-mix(in srgb, var(--accent) 15%, transparent)" : "var(--border-subtle)",
                 border: activeTab === t.id ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.07)",
-                color: activeTab === t.id ? "#FF003C" : "#ccccee",
+                color: activeTab === t.id ? "#FF003C" : "var(--text-secondary)",
               }}>{t.label}</button>
           ))}
         </div>
@@ -453,9 +458,9 @@ export default function LoginPage() {
                 { label: "Liked",     value: (session.likedSongs || []).length, color: "#FF4444" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="p-4 rounded-2xl text-center"
-                  style={{ background: "rgba(18,18,32,0.7)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="text-2xl font-black" style={{ color, fontFamily: "Orbitron, sans-serif" }}>{value}</p>
-                  <p className="text-[10px] mt-1 tracking-[0.15em] uppercase" style={{ color: "#666688", fontFamily: "Orbitron, sans-serif" }}>{label}</p>
+                  <p className="text-[10px] mt-1 tracking-[0.15em] uppercase" style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif" }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -467,7 +472,7 @@ export default function LoginPage() {
             </Link>
             <Link href="/recent"
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-sm transition-all"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
+              style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>
               ⏱ Continue Listening
             </Link>
           </div>
@@ -476,24 +481,24 @@ export default function LoginPage() {
         {/* ── CONNECT TAB ──────────────────────────────────────────────────── */}
         {activeTab === "connect" && (
           <div className="space-y-4">
-            <p className="text-xs" style={{ color: "#666688" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Connect Google or Spotify to import your playlists. When you disconnect, playlists are saved to your Arise account.
             </p>
 
             {/* Google */}
-            <div className="p-5 rounded-2xl" style={{ background: "rgba(18,18,32,0.8)", border: "1px solid rgba(66,133,244,0.15)" }}>
+            <div className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid rgba(66,133,244,0.15)" }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Chrome className="w-6 h-6" style={{ color: "#4285F4" }} />
                   <div>
-                    <p className="text-sm font-bold" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>Google / YouTube</p>
-                    {googleProfile && <p className="text-xs" style={{ color: "#9999bb" }}>{googleProfile.email || googleProfile.name}</p>}
+                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>Google / YouTube</p>
+                    {googleProfile && <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{googleProfile.email || googleProfile.name}</p>}
                   </div>
                 </div>
                 {googleProfile
                   ? <button onClick={() => { saveOAuthToAccount(googlePl, "youtube"); handleDisconnect("google"); }}
                       className="text-xs px-3 py-1.5 rounded-lg font-bold transition-all"
-                      style={{ background: "rgba(255,0,60,0.08)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
+                      style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
                       Save & Disconnect
                     </button>
                   : <button onClick={() => { try { startGoogleLogin(); } catch(e) { toast.error(e.message); } }}
@@ -524,13 +529,13 @@ export default function LoginPage() {
                 <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
                   {googlePl.map(pl => (
                     <div key={pl.id} className="flex items-center gap-2.5 p-2 rounded-lg"
-                      style={{ background: "rgba(255,255,255,0.03)" }}>
+                      style={{ background: "var(--border-subtle)" }}>
                       {pl.thumbnail
                         ? <img src={pl.thumbnail} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
                         : <div className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(66,133,244,0.15)" }}><Youtube className="w-4 h-4" style={{ color: "#4285F4" }} /></div>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate" style={{ color: "#ccccee" }}>{pl.title}</p>
-                        <p className="text-[10px]" style={{ color: "#666688" }}>{pl.count} tracks</p>
+                        <p className="text-xs font-semibold truncate" style={{ color: "var(--text-secondary)" }}>{pl.title}</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{pl.count} tracks</p>
                       </div>
                     </div>
                   ))}
@@ -539,19 +544,19 @@ export default function LoginPage() {
             </div>
 
             {/* Spotify */}
-            <div className="p-5 rounded-2xl" style={{ background: "rgba(18,18,32,0.8)", border: "1px solid rgba(29,185,84,0.15)" }}>
+            <div className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid rgba(29,185,84,0.15)" }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <SpotifyIcon size={24} />
                   <div>
-                    <p className="text-sm font-bold" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>Spotify</p>
-                    {spotifyProfile && <p className="text-xs" style={{ color: "#9999bb" }}>{spotifyProfile.email || spotifyProfile.display_name}</p>}
+                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>Spotify</p>
+                    {spotifyProfile && <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{spotifyProfile.email || spotifyProfile.display_name}</p>}
                   </div>
                 </div>
                 {spotifyProfile
                   ? <button onClick={() => { saveOAuthToAccount(spotifyPl, "spotify"); handleDisconnect("spotify"); }}
                       className="text-xs px-3 py-1.5 rounded-lg font-bold transition-all"
-                      style={{ background: "rgba(255,0,60,0.08)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
+                      style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
                       Save & Disconnect
                     </button>
                   : <button onClick={() => { try { startSpotifyLogin(); } catch(e) { toast.error(e.message); } }}
@@ -582,13 +587,13 @@ export default function LoginPage() {
                 <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
                   {spotifyPl.map(pl => (
                     <div key={pl.id} className="flex items-center gap-2.5 p-2 rounded-lg"
-                      style={{ background: "rgba(255,255,255,0.03)" }}>
+                      style={{ background: "var(--border-subtle)" }}>
                       {pl.thumbnail
                         ? <img src={pl.thumbnail} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
                         : <div className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(29,185,84,0.15)" }}><SpotifyIcon size={16} /></div>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate" style={{ color: "#ccccee" }}>{pl.title}</p>
-                        <p className="text-[10px]" style={{ color: "#666688" }}>{pl.count} tracks</p>
+                        <p className="text-xs font-semibold truncate" style={{ color: "var(--text-secondary)" }}>{pl.title}</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{pl.count} tracks</p>
                       </div>
                     </div>
                   ))}
@@ -598,7 +603,7 @@ export default function LoginPage() {
 
             {/* Setup note */}
             {(!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && !process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID) && (
-              <div className="p-4 rounded-xl text-xs leading-relaxed" style={{ background: "rgba(255,200,0,0.05)", border: "1px solid rgba(255,200,0,0.15)", color: "#aaaacc" }}>
+              <div className="p-4 rounded-xl text-xs leading-relaxed" style={{ background: "rgba(255,200,0,0.05)", border: "1px solid rgba(255,200,0,0.15)", color: "var(--text-secondary)" }}>
                 <p className="font-bold mb-1" style={{ color: "#FFD700" }}>⚙️ OAuth Setup Required</p>
                 Add to <code style={{ color: "#FF003C" }}>.env.local</code>:<br />
                 <code style={{ color: "#9D4EDD" }}>NEXT_PUBLIC_GOOGLE_CLIENT_ID=...</code><br />
@@ -622,10 +627,10 @@ export default function LoginPage() {
 
             {allPlaylists.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 rounded-2xl text-center"
-                style={{ background: "rgba(18,18,32,0.5)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <Music2 className="w-10 h-10 mb-3" style={{ color: "#44445a" }} />
-                <p className="text-sm font-semibold" style={{ color: "#ccccee" }}>No playlists yet</p>
-                <p className="text-xs mt-1" style={{ color: "#666688" }}>Connect Google/Spotify or import a file</p>
+                style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <Music2 className="w-10 h-10 mb-3" style={{ color: "var(--text-faint)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>No playlists yet</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Connect Google/Spotify or import a file</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -633,7 +638,7 @@ export default function LoginPage() {
                   const sourceColor = pl.source === "youtube" ? "#4285F4" : pl.source === "spotify" ? "#1DB954" : "#9D4EDD";
                   return (
                     <div key={pl.id} className="flex items-center gap-3 p-3.5 rounded-xl"
-                      style={{ background: "rgba(18,18,32,0.7)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.05)" }}>
                       {pl.thumbnail
                         ? <img src={pl.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                         : <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
@@ -641,8 +646,8 @@ export default function LoginPage() {
                             <Music2 className="w-5 h-5" style={{ color: sourceColor }} />
                           </div>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>{pl.name || pl.title}</p>
-                        <p className="text-xs mt-0.5" style={{ color: "#666688" }}>
+                        <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{pl.name || pl.title}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                           {pl.count || pl.songs?.length || 0} tracks ·{" "}
                           <span style={{ color: sourceColor }}>
                             {pl.source === "youtube" ? "YouTube" : pl.source === "spotify" ? "Spotify" : "Imported"}
@@ -651,7 +656,7 @@ export default function LoginPage() {
                       </div>
                       <Link href="/playlists"
                         className="text-xs px-3 py-1.5 rounded-lg font-bold flex-shrink-0"
-                        style={{ background: "rgba(255,0,60,0.08)", border: "1px solid rgba(255,0,60,0.15)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
+                        style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid rgba(255,0,60,0.15)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
                         Open
                       </Link>
                     </div>
@@ -677,22 +682,22 @@ export default function LoginPage() {
             style={{ fontFamily: "Orbitron, sans-serif", background: "linear-gradient(135deg, #FF003C, #9D4EDD)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
             {mode === "login" ? "Enter the Gate" : "Join Arise"}
           </h1>
-          <p className="text-sm" style={{ color: "#9999bb" }}>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {mode === "login" ? "Sign in to access your playlists and history." : "Create an account to save everything across devices."}
           </p>
         </div>
 
-        <div className="p-7 rounded-2xl" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(255,0,60,0.12)", boxShadow: "0 0 60px rgba(255,0,60,0.04)" }}>
+        <div className="p-7 rounded-2xl" style={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,0,60,0.12)", boxShadow: "0 0 60px rgba(255,0,60,0.04)" }}>
 
           {/* Auth type toggle */}
-          <div className="flex gap-2 mb-5 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div className="flex gap-2 mb-5 p-1 rounded-xl" style={{ background: "var(--border-subtle)" }}>
             {[{ id: "email", label: "Email", icon: Mail }, { id: "phone", label: "Phone", icon: Phone }].map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => { setAuthType(id); setIdentifier(""); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all"
                 style={{
-                  background: authType === id ? "rgba(255,0,60,0.15)" : "transparent",
+                  background: authType === id ? "color-mix(in srgb, var(--accent) 15%, transparent)" : "transparent",
                   border: authType === id ? "1px solid rgba(255,0,60,0.3)" : "1px solid transparent",
-                  color: authType === id ? "#FF003C" : "#9999bb", fontFamily: "Rajdhani, sans-serif",
+                  color: authType === id ? "#FF003C" : "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif",
                 }}>
                 <Icon className="w-3.5 h-3.5" />{label}
               </button>
@@ -707,16 +712,16 @@ export default function LoginPage() {
               type={authType === "email" ? "email" : "tel"} value={identifier} onChange={e => setIdentifier(e.target.value)}
               placeholder={authType === "email" ? "you@example.com" : "+91 98765 43210"} />
             <div>
-              <label className="text-xs font-bold mb-1.5 block" style={{ color: "#9999bb", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>PASSWORD</label>
+              <label className="text-xs font-bold mb-1.5 block" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>PASSWORD</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#666688" }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
                 <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password"
                   className="w-full pl-10 pr-10 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}
+                  style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}
                   onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,0,60,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(255,0,60,0.08)"; }}
                   onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }} />
                 <button type="button" onClick={() => setShowPw(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#666688" }}>
+                  className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }}>
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -732,9 +737,9 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
-            <span className="text-xs" style={{ color: "#444466" }}>or continue with</span>
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+            <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+            <span className="text-xs" style={{ color: "var(--text-faint)" }}>or continue with</span>
+            <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
           </div>
 
           {/* OAuth buttons */}
@@ -754,7 +759,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5 text-center">
-            <p className="text-xs" style={{ color: "#666688" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {mode === "login" ? "No account yet?" : "Already have one?"}{" "}
               <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setPassword(""); setName(""); }}
                 className="font-bold" style={{ color: "#FF003C" }}>
@@ -763,7 +768,7 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-        <p className="text-center mt-4 text-xs" style={{ color: "#444466" }}>
+        <p className="text-center mt-4 text-xs" style={{ color: "var(--text-faint)" }}>
           Email accounts verified via Resend · OAuth via Google &amp; Spotify
         </p>
       </div>

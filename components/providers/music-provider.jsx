@@ -1,296 +1,266 @@
 "use client";
 /**
- * MusicProvider — THE single audio element for the entire app.
- * 
- * Architecture:
- * - ONE <audio> ref lives here, never re-created on navigation
- * - All components read state from context; none own their own audio
- * - playSong(id) is the single entry point for playing anything
- * - Playing continues uninterrupted across all page navigations
+ * MusicProvider — Unified audio engine.
+ *
+ * PRIMARY:  YouTube player (via YTContext)
+ * FALLBACK: Saavn <audio> element (hidden, only used when YT search fails)
+ *
+ * When playSong(saavnId) is called:
+ *   1. Fetch Saavn metadata to get title + artist
+ *   2. Search YouTube Music via Muzo API for that song
+ *   3. If found → play in YT player (yt.playVideo)
+ *   4. If not found → fall back to Saavn <audio> stream
+ *
+ * Everything unified into ONE recently-played list (arise:recent)
  */
 import { MusicContext } from "@/hooks/use-context";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useContext } from "react";
+import { YTContext } from "@/hooks/use-youtube";
 import { getSongsById } from "@/lib/fetch";
+import { muzoSearch } from "@/lib/muzo";
+
+const RECENT_KEY = "arise:recent"; // unified recent list
+
+function addToUnifiedRecent(item) {
+  try {
+    const existing = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    const deduped  = existing.filter(r => !(r.saavnId === item.saavnId && r.ytId === item.ytId));
+    localStorage.setItem(RECENT_KEY, JSON.stringify([item, ...deduped].slice(0, 50)));
+  } catch {}
+}
+
+export function getUnifiedRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
+  catch { return []; }
+}
 
 export default function MusicProvider({ children }) {
+  const yt       = useContext(YTContext); // access YT context to route playback
   const audioRef = useRef(null);
 
-  // ── Song identity ──────────────────────────────────────
   const [musicId,   setMusicId]   = useState(null);
   const [songData,  setSongData]  = useState(null);
   const [audioURL,  setAudioURL]  = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFallback,setIsFallback]= useState(false); // true when using Saavn audio
 
-  // ── Playback state (mirrors audio element) ─────────────
   const [playing,     setPlaying]     = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration,    setDuration]    = useState(0);
   const [volume,      setVolume]      = useState(1);
   const [muted,       setMuted]       = useState(false);
   const [isLooping,   setIsLooping]   = useState(false);
+  const [queue,       setQueue]       = useState([]);
 
-  // ── Queue & library ────────────────────────────────────
-  const [queue, setQueue] = useState([]);
-  const [recentlyPlayed, setRecentlyPlayed] = useState([]);
-
-  // ── UI state ───────────────────────────────────────────
-  const [playerOpen, setPlayerOpen] = useState(false); // full-screen modal
-
-  // ── Helpers ────────────────────────────────────────────
   const formatTime = (t) => {
     if (!t || isNaN(t)) return "00:00";
     const m = Math.floor(t / 60), s = Math.floor(t % 60);
     return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
   };
-
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  // ── Load song data from API ────────────────────────────
-  const loadSong = useCallback(async (id) => {
-    if (!id) return;
-    setIsLoading(true);
-    setSongData(null);
+  // ── Load Saavn metadata ──────────────────────────────────────────────
+  const loadSaavnMeta = useCallback(async (id) => {
     try {
       const res  = await getSongsById(id);
       const json = await res.json();
-      const song = json?.data?.[0];
-      if (!song) { setIsLoading(false); return; }
-      setSongData(song);
-      const url =
-        song?.downloadUrl?.[3]?.url ||
-        song?.downloadUrl?.[2]?.url ||
-        song?.downloadUrl?.[1]?.url ||
-        song?.downloadUrl?.[0]?.url || "";
-      setAudioURL(url);
-    } catch (e) {
-      console.error("loadSong failed:", e);
-    } finally {
-      setIsLoading(false);
-    }
+      return json?.data?.[0] || null;
+    } catch { return null; }
   }, []);
 
-  // ── playSong — THE public API for playing anything ─────
-  const playSong = useCallback((id) => {
+  // ── Main entry: playSong(saavnId) ────────────────────────────────────
+  const playSong = useCallback(async (id) => {
     if (!id) return;
-
-    // Same song → toggle play/pause
-    if (id === musicId) {
-      const audio = audioRef.current;
-      if (!audio) return;
-      if (audio.paused) { audio.play(); setPlaying(true); }
-      else              { audio.pause(); setPlaying(false); }
-      return;
-    }
-
+    setIsLoading(true);
     setMusicId(id);
-    setCurrentTime(0);
-    setDuration(0);
-    setPlaying(true); // will autoplay once URL is set
-    // Pause YouTube when Saavn starts
-    window.dispatchEvent(new CustomEvent("arise:saavn:playing"));
 
-    // Persist
+    // 1. Fetch Saavn metadata
+    const song = await loadSaavnMeta(id);
+    if (!song) { setIsLoading(false); return; }
+    setSongData(song);
+
+    const title  = song.name || "";
+    const artist = song.artists?.primary?.[0]?.name || song.artists?.all?.[0]?.name || "";
+    const thumb  = song.image?.[1]?.url || song.image?.[0]?.url || "";
+
+    // 2. Try YouTube Music via Muzo
     try {
-      localStorage.setItem("remix:last", id);
-      setRecentlyPlayed(prev => {
-        const next = [{ id, ts: Date.now() }, ...prev.filter(r => r.id !== id)].slice(0, 50);
-        localStorage.setItem("remix:recent", JSON.stringify(next));
-        return next;
-      });
+      const query   = `${title} ${artist}`.trim();
+      const results = await muzoSearch(query, "songs", 3);
+      const best    = results?.[0];
+      const ytId    = best?.videoId || best?.id;
+
+      if (ytId && yt?.playVideo) {
+        yt.playVideo({
+          id:           ytId,
+          title:        best.title || title,
+          channelTitle: (best.artists || []).map(a => a.name || a).join(", ") || artist,
+          thumbnail:    best.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg`,
+          saavnId:      id, // carry original ID for metadata
+        });
+        setIsFallback(false);
+        // Add to unified recent
+        addToUnifiedRecent({
+          id:       ytId,
+          ytId,
+          saavnId:  id,
+          name:     title,
+          title:    title,
+          artist,
+          thumbnail: thumb || `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg`,
+          source:   "saavn_yt",
+          ts:       Date.now(),
+        });
+        setIsLoading(false);
+        window.dispatchEvent(new CustomEvent("arise:saavn:playing")); // pause any other audio
+        return;
+      }
     } catch {}
-  }, [musicId]);
 
-  // ── stopPlayback ───────────────────────────────────────
-  const stopPlayback = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio) { audio.pause(); audio.currentTime = 0; }
-    setMusicId(null); setSongData(null); setAudioURL("");
-    setPlaying(false); setCurrentTime(0); setDuration(0);
-    try { localStorage.removeItem("remix:last"); } catch {}
-  }, []);
+    // 3. Fallback: Saavn audio stream
+    const url =
+      song?.downloadUrl?.[3]?.url ||
+      song?.downloadUrl?.[2]?.url ||
+      song?.downloadUrl?.[1]?.url ||
+      song?.downloadUrl?.[0]?.url || "";
 
-  // ── togglePlay ─────────────────────────────────────────
-  const togglePlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio || !audioURL) return;
-    if (audio.paused) { audio.play(); setPlaying(true); }
-    else              { audio.pause(); setPlaying(false); }
-  }, [audioURL]);
+    setAudioURL(url);
+    setIsFallback(true);
 
-  // ── seek ───────────────────────────────────────────────
-  const seek = useCallback((seconds) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, Math.min(seconds, audio.duration || 0));
-    setCurrentTime(audio.currentTime);
-  }, []);
+    addToUnifiedRecent({
+      id:       id,
+      saavnId:  id,
+      name:     title,
+      title:    title,
+      artist,
+      thumbnail: thumb,
+      source:   "saavn",
+      ts:       Date.now(),
+    });
 
-  // ── volume ─────────────────────────────────────────────
-  const changeVolume = useCallback((v) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const c = Math.max(0, Math.min(1, v));
-    audio.volume = c;
-    setVolume(c);
-    setMuted(c === 0);
-    audio.muted = c === 0;
-    try { localStorage.setItem("remix:volume", String(c)); } catch {}
-  }, []);
+    setIsLoading(false);
+    window.dispatchEvent(new CustomEvent("arise:saavn:playing"));
+  }, [loadSaavnMeta, yt]);
 
-  const toggleMute = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const next = !muted;
-    audio.muted = next;
-    setMuted(next);
-  }, [muted]);
-
-  // ── loop ───────────────────────────────────────────────
-  const toggleLoop = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.loop = !audio.loop;
-    setIsLooping(audio.loop);
-  }, []);
-
-  // ── When musicId changes → fetch audio data ────────────
+  // ── Audio element: only used for Saavn fallback ──────────────────────
   useEffect(() => {
-    if (musicId) loadSong(musicId);
-  }, [musicId]);
-
-  // ── When audioURL changes → set src and play ──────────
-  useEffect(() => {
+    if (!isFallback || !audioURL || !audioRef.current) return;
     const audio = audioRef.current;
-    if (!audio || !audioURL) return;
-    audio.src = audioURL;
-    audio.load();
-    // Always autoplay when a new song URL arrives
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => setPlaying(true))
-        .catch(() => setPlaying(false));
-    }
-  }, [audioURL]);
+    audio.src    = audioURL;
+    audio.volume = volume;
+    audio.loop   = isLooping;
+    audio.play().catch(() => {});
+  }, [audioURL, isFallback]);
 
-  // ── Audio element event listeners (mounted once) ───────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    const onPlay       = () => setPlaying(true);
-    const onPause      = () => setPlaying(false);
-    const onTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-      if (audio.duration && !isNaN(audio.duration)) setDuration(audio.duration);
-    };
-    const onLoaded     = () => {
-      if (!isNaN(audio.duration)) setDuration(audio.duration);
-    };
-    const onEnded      = () => {
+    const onPlay    = () => setPlaying(true);
+    const onPause   = () => setPlaying(false);
+    const onTime    = () => { setCurrentTime(audio.currentTime); if (!isNaN(audio.duration)) setDuration(audio.duration); };
+    const onLoaded  = () => { if (!isNaN(audio.duration)) setDuration(audio.duration); };
+    const onEnded   = () => {
       if (audio.loop) return;
       if (queue.length > 0) {
         const [next, ...rest] = queue;
         setQueue(rest);
-        // queue items can be either a string id or a full song object
-        const nextId = typeof next === "string" ? next : (next?.id || next);
-        if (nextId) playSong(nextId);
-      } else {
-        setPlaying(false);
-      }
+        playSong(typeof next === "string" ? next : next?.id);
+      } else setPlaying(false);
     };
-
-    audio.addEventListener("play",        onPlay);
-    audio.addEventListener("pause",       onPause);
-    audio.addEventListener("timeupdate",  onTimeUpdate);
-    audio.addEventListener("loadeddata",  onLoaded);
-    audio.addEventListener("ended",       onEnded);
-
+    audio.addEventListener("play",       onPlay);
+    audio.addEventListener("pause",      onPause);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadeddata", onLoaded);
+    audio.addEventListener("ended",      onEnded);
     return () => {
-      audio.removeEventListener("play",        onPlay);
-      audio.removeEventListener("pause",       onPause);
-      audio.removeEventListener("timeupdate",  onTimeUpdate);
-      audio.removeEventListener("loadeddata",  onLoaded);
-      audio.removeEventListener("ended",       onEnded);
+      audio.removeEventListener("play",       onPlay);
+      audio.removeEventListener("pause",      onPause);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadeddata", onLoaded);
+      audio.removeEventListener("ended",      onEnded);
     };
-  }, [queue, playSong]);
+  }, [queue, playSong, isLooping]);
 
-  // ── Restore last played + volume on mount ──────────────
-  useEffect(() => {
-    try {
-      const last   = localStorage.getItem("remix:last");
-      const vol    = parseFloat(localStorage.getItem("remix:volume") || "1");
-      const recent = JSON.parse(localStorage.getItem("remix:recent") || "[]");
-      if (audioRef.current) {
-        audioRef.current.volume = vol;
-        setVolume(vol);
-      }
-      setRecentlyPlayed(recent);
-      if (last) {
-        setMusicId(last);
-        // Don't autoplay on restore — just load metadata
-        loadSong(last).then(() => {
-          setPlaying(false); // loaded but paused on restore
-        });
-      }
-    } catch {}
-  }, []);
-
-
-  // ── Mutual exclusion: pause when YouTube starts playing ────────
+  // Pause Saavn when YT plays
   useEffect(() => {
     const handler = () => {
-      const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        audio.pause();
+      if (isFallback && audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
         setPlaying(false);
       }
     };
     window.addEventListener("arise:yt:playing", handler);
     return () => window.removeEventListener("arise:yt:playing", handler);
+  }, [isFallback]);
+
+  const togglePlay   = useCallback(() => {
+    if (!isFallback) return; // YT handles its own toggle
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); }
+  }, [isFallback]);
+
+  const seek = useCallback((t) => {
+    if (!isFallback || !audioRef.current) return;
+    audioRef.current.currentTime = t;
+    setCurrentTime(t);
+  }, [isFallback]);
+
+  const changeVolume = useCallback((v) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    setVolume(clamped);
+    if (audioRef.current) audioRef.current.volume = clamped;
+    try { localStorage.setItem("remix:volume", String(clamped)); } catch {}
   }, []);
 
-  // ── Global keyboard shortcuts ──────────────────────────
+  const toggleMute = useCallback(() => {
+    const next = !muted;
+    setMuted(next);
+    if (audioRef.current) audioRef.current.muted = next;
+  }, [muted]);
+
+  const toggleLoop = useCallback(() => {
+    const next = !isLooping;
+    setIsLooping(next);
+    if (audioRef.current) audioRef.current.loop = next;
+  }, [isLooping]);
+
+  const stopPlayback = useCallback(() => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+    setPlaying(false); setMusicId(null); setSongData(null); setIsFallback(false);
+  }, []);
+
+  // Restore volume on mount
   useEffect(() => {
-    const handler = (e) => {
-      const tag = e.target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) return;
-      if (e.code === "Space")                    { e.preventDefault(); togglePlay(); }
-      if (e.code === "KeyM")                     { toggleMute(); }
-      if (e.code === "KeyL")                     { toggleLoop(); }
-      if (e.code === "ArrowRight" && e.shiftKey) { seek(currentTime + 10); }
-      if (e.code === "ArrowLeft"  && e.shiftKey) { seek(Math.max(0, currentTime - 10)); }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [togglePlay, toggleMute, toggleLoop, seek, currentTime]);
+    try {
+      const vol = parseFloat(localStorage.getItem("remix:volume") || "1");
+      if (audioRef.current) audioRef.current.volume = vol;
+      setVolume(vol);
+    } catch {}
+  }, []);
 
   return (
     <MusicContext.Provider value={{
-      // Identity
       music: musicId, setMusic: playSong,
-      songData, audioURL, isLoading,
-      // Controls
-      playing, togglePlay, playSong,
+      songData, audioURL, isLoading, isFallback,
+      playing: isFallback ? playing : false, // only expose playing for fallback
+      togglePlay, playSong,
       seek, seekTo: seek,
       toggleLoop, isLooping,
       toggleMute, muted,
       volume, changeVolume,
       stopPlayback,
-      // State
-      currentTime, duration, progress, formatTime,
-      // Queue & history
+      currentTime: isFallback ? currentTime : 0,
+      duration:    isFallback ? duration    : 0,
+      progress:    isFallback ? progress    : 0,
+      formatTime,
       queue, setQueue,
-      recentlyPlayed,
-      // UI
-      playerOpen, setPlayerOpen,
-      // Legacy compat shims
-      current: currentTime,
-      setCurrent: setCurrentTime,
+      recentlyPlayed: [], // use getUnifiedRecent() directly
+      playerOpen: false, setPlayerOpen: () => {},
+      current: currentTime, setCurrent: setCurrentTime,
       downloadProgress: 0, setDownloadProgress: () => {},
     }}>
-      {/* THE single <audio> element for the whole app — never unmounts */}
-      <audio ref={audioRef} preload="auto" />
+      <audio ref={audioRef} preload="auto" style={{ display: "none" }} />
       {children}
     </MusicContext.Provider>
   );

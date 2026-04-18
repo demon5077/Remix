@@ -95,9 +95,13 @@ export default function PlaylistsPage() {
 
   // ── Open a playlist — fetch items for OAuth playlists ────────────────────
   const openPlaylist = async (playlist) => {
+    // Always clear first so switching playlists always triggers re-render
+    setActivePlaylist(null);
+    await new Promise(r => setTimeout(r, 0));
+
     // For imported/local playlists with inline songs
     if (playlist.songs?.length) {
-      setActivePlaylist(playlist);
+      setActivePlaylist({ ...playlist });
       return;
     }
 
@@ -139,11 +143,15 @@ export default function PlaylistsPage() {
     removeImportedPlaylist(playlistId);
     setImportedPls(getImportedPlaylists());
     setActivePlaylist(null);
-    // Persist to server
+    // Sync session playlists so Profile page shows correct count
     const s = getSession();
-    if (s?.id) {
+    if (s) {
       const remaining = (s.playlists || []).filter(p => p.id !== playlistId);
-      savePlaylistsToAccount({ userId: s.id, playlists: remaining }).catch(() => {});
+      saveSession({ ...s, playlists: remaining });
+      window.dispatchEvent(new CustomEvent("arise:session:changed"));
+      if (s.id) {
+        savePlaylistsToAccount({ userId: s.id, playlists: remaining }).catch(() => {});
+      }
     }
     toast("Playlist deleted");
   };
@@ -203,11 +211,11 @@ export default function PlaylistsPage() {
   if (!hasAny) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] px-5 text-center">
-        <LogIn className="w-12 h-12 mb-4" style={{ color: "#44445a" }} />
-        <h2 className="text-xl font-black mb-2" style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8" }}>
+        <LogIn className="w-12 h-12 mb-4" style={{ color: "var(--text-faint)" }} />
+        <h2 className="text-xl font-black mb-2" style={{ fontFamily: "Orbitron, sans-serif", color: "var(--text-primary)" }}>
           No playlists yet
         </h2>
-        <p className="text-sm mb-6" style={{ color: "#8888aa" }}>
+        <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
           Sign in or connect Google/Spotify to load your playlists, or import a local file.
         </p>
         <div className="flex gap-3 flex-wrap justify-center">
@@ -227,12 +235,12 @@ export default function PlaylistsPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-8 min-h-screen" style={{ color: "#e8e8f8" }}>
+    <div className="px-4 md:px-8 py-8 min-h-screen" style={{ color: "var(--text-primary)" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-black" style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8" }}>
+          <h1 className="text-2xl font-black" style={{ fontFamily: "Orbitron, sans-serif", color: "var(--text-primary)" }}>
             Playlists
           </h1>
           <p className="remix-section-title mt-1">{allPlaylists.length} total playlists</p>
@@ -262,7 +270,7 @@ export default function PlaylistsPage() {
           {!isGoogleConnected() && !isSpotifyConnected() && (
             <Link href="/login"
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-              style={{ background: "rgba(255,0,60,0.08)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
+              style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid rgba(255,0,60,0.2)", color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>
               Connect Accounts
             </Link>
           )}
@@ -276,9 +284,9 @@ export default function PlaylistsPage() {
             className="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all"
             style={{
               fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em",
-              background: activeSource === s ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.04)",
+              background: activeSource === s ? "color-mix(in srgb, var(--accent) 15%, transparent)" : "var(--border-subtle)",
               border:     activeSource === s ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.06)",
-              color:      activeSource === s ? "#FF003C" : "#ccccee",
+              color:      activeSource === s ? "#FF003C" : "var(--text-secondary)",
             }}>
             {s.charAt(0).toUpperCase() + s.slice(1)}{s !== "all" ? ` (${allPlaylists.filter(p => p._type === s || p.source === s).length})` : ` (${allPlaylists.length})`}
           </button>
@@ -292,9 +300,9 @@ export default function PlaylistsPage() {
         <div className="lg:w-[300px] flex-shrink-0">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 rounded-2xl text-center"
-              style={{ background: "rgba(18,18,32,0.5)", border: "1px solid rgba(255,0,60,0.07)" }}>
-              <ListMusic className="w-8 h-8 mb-2" style={{ color: "#44445a" }} />
-              <p className="text-sm" style={{ color: "#8888aa" }}>
+              style={{ background: "var(--bg-card)", border: "1px solid rgba(255,0,60,0.07)" }}>
+              <ListMusic className="w-8 h-8 mb-2" style={{ color: "var(--text-faint)" }} />
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 {activeSource === "youtube" && !isGoogleConnected() ? "Connect Google to load YouTube playlists"
                 : activeSource === "spotify" && !isSpotifyConnected() ? "Connect Spotify to load playlists"
                 : "No playlists found"}
@@ -310,25 +318,25 @@ export default function PlaylistsPage() {
                   <button key={pl.id} onClick={() => openPlaylist(pl)}
                     className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200"
                     style={{
-                      background: isActive ? "rgba(255,0,60,0.1)" : "rgba(18,18,32,0.7)",
+                      background: isActive ? "rgba(255,0,60,0.1)" : "var(--bg-card)",
                       border:     isActive ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.05)",
                     }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(28,28,48,0.9)"; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "rgba(18,18,32,0.7)"; }}>
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-card-hover)"; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-card)"; }}>
                     {pl.thumbnail
                       ? <img src={pl.thumbnail} alt={pl.name || pl.title}
                           className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                          style={{ background: "rgba(18,18,32,0.8)" }} />
+                          style={{ background: "var(--bg-card)" }} />
                       : <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center"
                           style={{ background: `${srcColor}18` }}>
                           <Music2 className="w-5 h-5" style={{ color: srcColor }} />
                         </div>}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate"
-                        style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
+                        style={{ color: isActive ? "#FF003C" : "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>
                         {pl.name || pl.title || "Untitled"}
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: "#666688" }}>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {pl.count || pl.songs?.length || 0} tracks ·{" "}
                         <span style={{ color: srcColor }}>
                           {pl._type === "youtube" || pl.source === "youtube" ? "YouTube"
@@ -347,20 +355,20 @@ export default function PlaylistsPage() {
         <div className="flex-1 min-w-0">
           {!activePlaylist ? (
             <div className="flex flex-col items-center justify-center h-64 rounded-2xl"
-              style={{ background: "rgba(18,18,32,0.4)", border: "1px solid rgba(255,255,255,0.04)" }}>
-              <PlayCircle className="w-10 h-10 mb-3" style={{ color: "#44445a" }} />
-              <p className="text-sm" style={{ color: "#8888aa" }}>Select a playlist to manage it</p>
-              <p className="text-xs mt-1" style={{ color: "#44445a" }}>Play, rename, delete, or add songs</p>
+              style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.04)" }}>
+              <PlayCircle className="w-10 h-10 mb-3" style={{ color: "var(--text-faint)" }} />
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>Select a playlist to manage it</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>Play, rename, delete, or add songs</p>
             </div>
           ) : activePlaylist._loading ? (
             <div className="flex flex-col items-center justify-center h-64 rounded-2xl"
-              style={{ background: "rgba(18,18,32,0.4)", border: "1px solid rgba(255,255,255,0.04)" }}>
+              style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.04)" }}>
               <RefreshCw className="w-8 h-8 mb-3 animate-spin" style={{ color: "#FF003C" }} />
-              <p className="text-sm" style={{ color: "#8888aa" }}>Loading playlist tracks…</p>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading playlist tracks…</p>
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: "rgba(10,10,20,0.85)", border: "1px solid rgba(255,0,60,0.08)", minHeight: "400px" }}>
+              style={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,0,60,0.08)", minHeight: "400px" }}>
               <PlaylistManager
                 playlist={activePlaylist}
                 onUpdate={handleUpdate}
