@@ -39,10 +39,10 @@ function ContinueListening() {
     <section className="space-y-3">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-lg font-bold" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
             ⏱ Continue Listening
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "#666688" }}>Pick up where you left off</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Pick up where you left off</p>
         </div>
         <a href="/recent" className="text-xs font-semibold" style={{ color: "#FF003C", fontFamily: "Rajdhani, sans-serif" }}>See all →</a>
       </div>
@@ -54,12 +54,12 @@ function ContinueListening() {
             <div className="relative overflow-hidden rounded-xl">
               <img src={item.thumbnail} alt={item.title}
                 className="w-full h-[90px] object-cover transition-transform duration-500 group-hover:scale-110"
-                style={{ background: "rgba(18,18,32,0.6)" }} />
+                style={{ background: "var(--bg-card)" }} />
               <div className="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[8px] font-bold"
                 style={{ background: "#FF0000", color: "white", fontFamily: "Orbitron, sans-serif" }}>YT</div>
             </div>
-            <p className="text-xs font-semibold mt-2 truncate" style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
-            <p className="text-[10px] truncate mt-0.5" style={{ color: "#666688" }}>{item.channelTitle}</p>
+            <p className="text-xs font-semibold mt-2 truncate" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+            <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--text-muted)" }}>{item.channelTitle}</p>
           </button>
         ))}
       </div>
@@ -295,14 +295,14 @@ export default function HomePage() {
         {/* ── YouTube setup nudge (only if no key) ─────── */}
         {!ytHasKey && (
           <div className="p-5 rounded-2xl"
-            style={{ background: "rgba(18,18,32,0.6)", border: "1px solid rgba(255,0,60,0.07)" }}>
-            <p className="text-sm font-semibold mb-1" style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>
+            style={{ background: "var(--bg-card)", border: "1px solid rgba(255,0,60,0.07)" }}>
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>
               🔴 YouTube live data — optional setup
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: "#8888aa" }}>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
               YouTube cards above show demo content. To enable live trending videos, add{" "}
-              <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>NEXT_PUBLIC_RAPIDAPI_KEY</code>
-              {" "}to your <code className="px-1 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#ccccee" }}>.env.local</code>.
+              <code className="px-1 rounded" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>NEXT_PUBLIC_RAPIDAPI_KEY</code>
+              {" "}to your <code className="px-1 rounded" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>.env.local</code>.
               {" "}YouTube audio playback already works without any key.
             </p>
           </div>

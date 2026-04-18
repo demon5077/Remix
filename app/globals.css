@@ -33,7 +33,9 @@
     @apply bg-background text-foreground select-none;
     font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
     letter-spacing: 0.015em;
-    background: #07070d;
+    background: var(--bg-primary, #07070d);
+    color: var(--text-primary, #e8e8f8);
+    transition: background 0.4s ease, color 0.4s ease;
   }
 
   ::-webkit-scrollbar { width: 3px; height: 3px; }
@@ -185,4 +187,217 @@
   0%   { width: 15%; opacity: 0.7; }
   50%  { width: 85%; opacity: 1;   }
   100% { width: 45%; opacity: 0.8; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ARISE THEME SYSTEM — Dark (Demon) / Light (Angel)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── DARK THEME (default) ─────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg-primary:      #07070d;
+  --bg-secondary:    rgba(10,10,20,0.97);
+  --bg-card:         rgba(18,18,32,0.85);
+  --bg-card-hover:   rgba(28,28,48,0.9);
+  --bg-elevated:     rgba(14,14,26,0.98);
+  --border-primary:  rgba(255,0,60,0.12);
+  --border-subtle:   rgba(255,255,255,0.06);
+  --text-primary:    #e8e8f8;
+  --text-secondary:  #aaaacc;
+  --text-muted:      #666688;
+  --text-faint:      #444466;
+  --accent:          #FF003C;
+  --accent-2:        #9D4EDD;
+  --accent-glow:     rgba(255,0,60,0.3);
+  --nav-bg:          rgba(5,5,10,0.97);
+  --topbar-bg:       rgba(5,5,10,0.92);
+  --player-bg:       rgba(4,4,9,0.98);
+  --scrollbar:       #FF003C;
+  --orb-1:           rgba(139,0,0,0.10);
+  --orb-2:           rgba(124,58,237,0.06);
+  --particle-color:  rgba(255,0,60,0.6);
+  --shimmer-from:    rgba(255,255,255,0.02);
+  --shimmer-to:      rgba(255,255,255,0.06);
+  --sidebar-bottom-text: #7777aa;
+}
+
+/* ── LIGHT THEME (Angel) ─────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary:      #fdfbf4;
+  --bg-secondary:    rgba(255,252,240,0.97);
+  --bg-card:         rgba(255,250,230,0.9);
+  --bg-card-hover:   rgba(255,247,210,0.95);
+  --bg-elevated:     rgba(255,254,248,0.99);
+  --border-primary:  rgba(212,175,55,0.3);
+  --border-subtle:   rgba(212,175,55,0.15);
+  --text-primary:    #1a1208;
+  --text-secondary:  #5a4a1a;
+  --text-muted:      #9a8a4a;
+  --text-faint:      #c4b06a;
+  --accent:          #d4af37;
+  --accent-2:        #b8860b;
+  --accent-glow:     rgba(212,175,55,0.4);
+  --nav-bg:          rgba(255,252,235,0.97);
+  --topbar-bg:       rgba(255,252,235,0.94);
+  --player-bg:       rgba(255,252,230,0.99);
+  --scrollbar:       #d4af37;
+  --orb-1:           rgba(255,215,0,0.15);
+  --orb-2:           rgba(212,175,55,0.10);
+  --particle-color:  rgba(212,175,55,0.8);
+  --shimmer-from:    rgba(212,175,55,0.04);
+  --shimmer-to:      rgba(212,175,55,0.12);
+  --sidebar-bottom-text: #9a8a4a;
+}
+
+/* Apply theme variables to body */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+[data-theme="light"] body,
+[data-theme="light"] .remix-bg {
+  background: var(--bg-primary) !important;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #d4af37, #b8860b);
+}
+
+/* Light theme nav/topbar overrides */
+[data-theme="light"] .remix-bg::before {
+  background: radial-gradient(ellipse, rgba(255,215,0,0.12) 0%, transparent 70%) !important;
+}
+[data-theme="light"] .remix-bg::after {
+  background: radial-gradient(ellipse, rgba(212,175,55,0.08) 0%, transparent 70%) !important;
+}
+
+/* Angelic particle shimmer animation */
+@keyframes angelicFloat {
+  0%   { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.7; }
+  33%  { transform: translateY(-20px) translateX(8px) rotate(120deg); opacity: 0.4; }
+  66%  { transform: translateY(-10px) translateX(-6px) rotate(240deg); opacity: 0.9; }
+  100% { transform: translateY(0px) translateX(0px) rotate(360deg); opacity: 0.7; }
+}
+
+@keyframes goldenPulse {
+  0%,100% { box-shadow: 0 0 20px rgba(212,175,55,0.3); }
+  50%     { box-shadow: 0 0 40px rgba(212,175,55,0.6); }
+}
+
+/* Light theme shimmer */
+[data-theme="light"] .remix-shimmer {
+  background: linear-gradient(90deg, rgba(212,175,55,0.1) 25%, rgba(212,175,55,0.25) 50%, rgba(212,175,55,0.1) 75%);
+}
+
+/* Transition for theme switch */
+* { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+/* But not for transforms/animations */
+[class*="animate-"], [style*="animation"] { transition: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT THEME GLOBAL OVERRIDES
+   Forces all hardcoded dark backgrounds to use CSS vars.
+   Applied when data-theme="light" on html/body.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base body & root ──────────────────────────────────────────── */
+[data-theme="light"] {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ── All dark card backgrounds ─────────────────────────────────── */
+[data-theme="light"] [style*="rgba(18,18,32"],
+[data-theme="light"] [style*="rgba(10,10,20"],
+[data-theme="light"] [style*="rgba(14,14,26"],
+[data-theme="light"] [style*="rgba(12,12,22"],
+[data-theme="light"] [style*="rgba(8,8,16"],
+[data-theme="light"] [style*="rgba(5,5,10"],
+[data-theme="light"] [style*="rgba(4,4,9"],
+[data-theme="light"] [style*="background: \"#07070d\""],
+[data-theme="light"] [style*="background:#07070d"] {
+  background: var(--bg-card) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+/* ── Fixed nav, topbar, player ─────────────────────────────────── */
+[data-theme="light"] .fixed,
+[data-theme="light"] header,
+[data-theme="light"] aside,
+[data-theme="light"] nav {
+  background: var(--nav-bg) !important;
+}
+
+/* ── Player bar specifically ───────────────────────────────────── */
+[data-theme="light"] .arise-player {
+  background: var(--player-bg) !important;
+  border-top-color: var(--border-primary) !important;
+}
+
+/* ── Modal / overlay backgrounds ──────────────────────────────── */
+[data-theme="light"] .arise-modal-bg {
+  background: rgba(255, 252, 230, 0.97) !important;
+}
+
+/* ── All dark text colors ──────────────────────────────────────── */
+[data-theme="light"] [style*="color: \"#e8e8f8\""],
+[data-theme="light"] [style*="color: \"#ccccee\""],
+[data-theme="light"] [style*="color: \"#e8e8f8\""] {
+  color: var(--text-primary) !important;
+}
+
+/* ── Search dropdown ───────────────────────────────────────────── */
+[data-theme="light"] .arise-search-dropdown {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-primary) !important;
+}
+
+/* ── Footer ────────────────────────────────────────────────────── */
+[data-theme="light"] footer,
+[data-theme="light"] .arise-footer {
+  background: rgba(255, 252, 220, 0.95) !important;
+  border-top-color: rgba(212, 175, 55, 0.3) !important;
+}
+[data-theme="light"] footer p,
+[data-theme="light"] footer span,
+[data-theme="light"] footer a {
+  color: var(--text-secondary) !important;
+}
+
+/* ── Progress bars ─────────────────────────────────────────────── */
+[data-theme="light"] .arise-progress-track {
+  background: rgba(212, 175, 55, 0.15) !important;
+}
+
+/* ── Input / form fields ───────────────────────────────────────── */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: rgba(255, 252, 235, 0.9) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-primary) !important;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────── */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: rgba(212, 175, 55, 0.05);
+}
+
+/* ── Shimmer animation in light ────────────────────────────────── */
+[data-theme="light"] .remix-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(212, 175, 55, 0.08) 25%,
+    rgba(212, 175, 55, 0.22) 50%,
+    rgba(212, 175, 55, 0.08) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.5s infinite !important;
+}
+
+/* ── Video player iframe container ─────────────────────────────── */
+[data-theme="light"] #arise-yt-container {
+  box-shadow: 0 8px 40px rgba(212, 175, 55, 0.3) !important;
 }

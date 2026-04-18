@@ -113,7 +113,7 @@ export default function HeroSection() {
             >
               {current.badge}
             </span>
-            <span className="text-xs" style={{ color: "#8888aa", fontFamily: "Rajdhani, sans-serif" }}>
+            <span className="text-xs" style={{ color: "var(--text-muted)", fontFamily: "Rajdhani, sans-serif" }}>
               {current.subtitle}
             </span>
           </div>
@@ -131,7 +131,7 @@ export default function HeroSection() {
             {current.title}
           </h1>
 
-          <p className="text-sm mb-6 leading-relaxed" style={{ color: "#8888aa", maxWidth: "380px" }}>
+          <p className="text-sm mb-6 leading-relaxed" style={{ color: "var(--text-muted)", maxWidth: "380px" }}>
             {current.desc}
           </p>
 
@@ -158,9 +158,9 @@ export default function HeroSection() {
               onClick={handleExplore}
               className="px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
               style={{
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--border-subtle)",
                 border: "1px solid rgba(255,255,255,0.12)",
-                color: "#ccccee",
+                color: "var(--text-secondary)",
                 fontFamily: "Rajdhani, sans-serif",
                 letterSpacing: "0.04em",
               }}

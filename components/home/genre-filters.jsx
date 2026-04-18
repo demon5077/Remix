@@ -50,8 +50,8 @@ export default function GenreFilters({ onFilter }) {
               letterSpacing: "0.04em",
               background: isActive
                 ? "linear-gradient(135deg, #8B0000, #FF003C)"
-                : "rgba(255,255,255,0.06)",
-              color: isActive ? "#ffffff" : "#ccccee",
+                : "var(--border-subtle)",
+              color: isActive ? "#ffffff" : "var(--text-secondary)",
               border: isActive
                 ? "1px solid rgba(255,0,60,0.5)"
                 : "1px solid rgba(255,255,255,0.08)",

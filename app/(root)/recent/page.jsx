@@ -1,96 +1,164 @@
 "use client";
 export const dynamic = "force-dynamic";
-
-import { useMusicProvider } from "@/hooks/use-context";
-import { useYT } from "@/hooks/use-youtube";
-import SongCard from "@/components/cards/song";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useEffect, useState } from "react";
-import { Clock, Play } from "lucide-react";
-import Link from "next/link";
+import { useYT } from "@/hooks/use-youtube";
+import { Clock, Play, Music2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+const RECENT_KEY  = "arise:recent";
+const YT_RECENT   = "arise:yt:recent";
+const OLD_SAAVN   = "remix:recent";
+
+function safeStr(v) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return v.name || v.title || v.id || JSON.stringify(v).slice(0, 40);
+  return String(v);
+}
 
 export default function RecentPage() {
-  const { recentlyPlayed, playSong } = useMusicProvider() || {};
-  const { getRecent, playVideo }     = useYT() || {};
-  const [ytRecent,  setYtRecent]     = useState([]);
+  const yt = useYT() || {};
+  const [items, setItems] = useState([]);
 
-  useEffect(() => {
-    if (getRecent) setYtRecent(getRecent().slice(0, 20));
-  }, []);
+  const load = () => {
+    try {
+      // Unified recent (arise:recent)
+      const raw      = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+      // Old YT recent format
+      const ytOld    = JSON.parse(localStorage.getItem(YT_RECENT) || "[]").map(r => ({
+        id:        r.id,
+        ytId:      r.id,
+        name:      safeStr(r.title || r.name),
+        artist:    safeStr(r.channelTitle || r.artist || ""),
+        thumbnail: typeof r.thumbnail === "string" ? r.thumbnail : null,
+        source:    "youtube",
+        ts:        r.ts || 0,
+      }));
+      // Old Saavn recent — could be string IDs or objects
+      const saavnRaw = JSON.parse(localStorage.getItem(OLD_SAAVN) || "[]");
+      const saavnOld = saavnRaw.map(entry => {
+        if (typeof entry === "string") {
+          return { id: entry, saavnId: entry, name: entry, artist: "", source: "saavn", ts: 0 };
+        }
+        if (typeof entry === "object" && entry !== null) {
+          return {
+            id:        safeStr(entry.id),
+            saavnId:   safeStr(entry.id),
+            name:      safeStr(entry.name || entry.title || entry.id || "Unknown"),
+            artist:    safeStr(entry.artist || entry.artists || ""),
+            thumbnail: typeof entry.thumbnail === "string" ? entry.thumbnail :
+                       (typeof entry.image === "string" ? entry.image : null),
+            source:    "saavn",
+            ts:        entry.ts || 0,
+          };
+        }
+        return null;
+      }).filter(Boolean);
 
-  const saavnRecent = recentlyPlayed || [];
+      // Merge and deduplicate by id
+      const map = new Map();
+      [...raw, ...ytOld, ...saavnOld].forEach(item => {
+        if (!item) return;
+        const key = safeStr(item.ytId || item.id);
+        if (key && !map.has(key)) map.set(key, item);
+      });
+
+      const sorted = [...map.values()]
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+        .slice(0, 50);
+      setItems(sorted);
+    } catch (e) {
+      console.error("Recent load error:", e);
+      setItems([]);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const clearAll = () => {
+    localStorage.removeItem(RECENT_KEY);
+    localStorage.removeItem(YT_RECENT);
+    localStorage.removeItem(OLD_SAAVN);
+    setItems([]);
+    toast("History cleared");
+  };
+
+  const playItem = (item) => {
+    const ytId = item.ytId || (/^[A-Za-z0-9_-]{11}$/.test(safeStr(item.id)) ? item.id : null);
+    if (ytId) {
+      yt.playVideo?.({
+        id:           ytId,
+        title:        safeStr(item.name || item.title),
+        channelTitle: safeStr(item.artist),
+        thumbnail:    item.thumbnail || `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg`,
+      });
+      toast(`▶ ${safeStr(item.name || item.title).slice(0, 40)}`);
+    } else {
+      toast.error("Can't play — no YouTube ID found");
+    }
+  };
 
   return (
-    <div className="px-5 md:px-8 lg:px-10 py-8">
-      {/* Header */}
+    <div className="px-4 md:px-8 py-8" style={{ color: "var(--text-primary)" }}>
       <div className="flex items-center gap-3 mb-2">
-        <Clock className="w-6 h-6" style={{ color: "#FF003C" }} />
-        <h1 className="text-2xl font-black" style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8" }}>
-          Continue Listening
+        <Clock className="w-6 h-6" style={{ color: "var(--accent)" }} />
+        <h1 className="text-2xl font-black" style={{ fontFamily: "Orbitron, sans-serif" }}>
+          Recently Played
         </h1>
+        {items.length > 0 && (
+          <button onClick={clearAll}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
+            style={{ background: "color-mix(in srgb, var(--accent) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)", fontFamily: "Rajdhani, sans-serif" }}>
+            <Trash2 className="w-3 h-3" /> Clear
+          </button>
+        )}
       </div>
-      <p className="remix-section-title mb-8">Pick up where you left off</p>
+      <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
+        {items.length} tracks · Saavn + YouTube merged
+      </p>
 
-      {/* Saavn recent */}
-      {saavnRecent.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-base font-bold mb-4" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
-            🎵 Recent Saavn Songs
-          </h2>
-          <ScrollArea>
-            <div className="flex gap-4 pb-3">
-              {saavnRecent.slice(0, 20).map(({ id }) => (
-                <SongCard key={id} id={id} />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </section>
-      )}
-
-      {/* YouTube recent */}
-      {ytRecent.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-base font-bold mb-4" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
-            🔴 Recent YouTube
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {ytRecent.map(item => (
-              <button key={item.id} onClick={() => playVideo?.(item)}
-                className="flex items-center gap-3 p-3 rounded-xl text-left transition-all group"
-                style={{ background: "rgba(18,18,32,0.7)", border: "1px solid rgba(255,255,255,0.05)" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(28,28,48,0.9)"; e.currentTarget.style.borderColor = "rgba(255,0,60,0.15)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(18,18,32,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; }}>
-                <div className="relative flex-shrink-0">
-                  <img src={item.thumbnail} alt={item.title}
-                    className="w-16 h-10 rounded-lg object-cover"
-                    style={{ background: "rgba(18,18,32,0.8)" }} />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                    style={{ background: "rgba(0,0,0,0.5)" }}>
-                    <Play className="w-4 h-4 text-white" />
-                  </div>
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 rounded-2xl"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+          <Music2 className="w-10 h-10 mb-3" style={{ color: "var(--text-faint)" }} />
+          <p style={{ color: "var(--text-muted)" }}>Nothing played yet — start listening!</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item, i) => {
+            const ytId = item.ytId || (/^[A-Za-z0-9_-]{11}$/.test(safeStr(item.id)) ? item.id : null);
+            const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : null);
+            const name  = safeStr(item.name || item.title || "Unknown");
+            const artist = safeStr(item.artist || "");
+            return (
+              <button key={`${safeStr(item.id)}-${i}`}
+                onClick={() => playItem(item)}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left group transition-all"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--bg-card-hover)"}
+                onMouseLeave={e => e.currentTarget.style.background = "var(--bg-card)"}>
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={{ background: "var(--bg-elevated)" }}>
+                  {thumb
+                    ? <img src={thumb} alt={name} className="w-full h-full object-cover" />
+                    : <Music2 className="w-4 h-4" style={{ color: "var(--text-faint)" }} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
-                  <p className="text-[10px] truncate mt-0.5" style={{ color: "#666688" }}>{item.channelTitle}</p>
+                  <p className="text-sm font-semibold truncate"
+                    style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{name}</p>
+                  {artist && <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{artist}</p>}
                 </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{
+                    background: ytId ? "color-mix(in srgb, #FF4444 10%, transparent)" : "color-mix(in srgb, var(--accent) 8%, transparent)",
+                    color:      ytId ? "#FF4444" : "var(--accent)",
+                    fontFamily: "Orbitron, sans-serif",
+                  }}>
+                  {ytId ? "YT" : "♪"}
+                </span>
+                <Play className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--accent)" }} />
               </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {saavnRecent.length === 0 && ytRecent.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-48 rounded-2xl"
-          style={{ background: "rgba(18,18,32,0.5)", border: "1px solid rgba(255,0,60,0.07)" }}>
-          <Clock className="w-10 h-10 mb-3" style={{ color: "#44445a" }} />
-          <p className="text-sm font-semibold" style={{ color: "#ccccee" }}>Nothing played yet</p>
-          <p className="text-xs mt-1" style={{ color: "#666688" }}>
-            Start listening — your history appears here
-          </p>
-          <Link href="/" className="mt-4 text-xs font-bold" style={{ color: "#FF003C" }}>
-            Browse Music →
-          </Link>
+            );
+          })}
         </div>
       )}
     </div>

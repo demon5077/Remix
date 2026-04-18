@@ -1,120 +1,170 @@
 "use client";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Logo from "@/components/page/logo";
 import Search from "@/components/page/search";
 import Player from "@/components/cards/player";
-import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
 import {
-  Home, Search as SearchIcon, Library, Heart, Clock,
-  Settings, ListMusic, Mic, Info, LogIn, User,
+  Home, Library, Heart, Clock, Settings, ListMusic,
+  Mic, Info, LogIn, Disc3, Users, Music2, Zap, Sun, Moon,
 } from "lucide-react";
 import AnimatedBackground from "@/components/home/animated-background";
+import AngelParticles from "@/components/home/angel-particles";
 import { getAnyUser } from "@/lib/session";
+import { getTheme, toggleTheme, applyTheme } from "@/lib/theme";
 
 const NAV = [
-  { href: "/",          icon: Home,       label: "Home"      },
-  { href: "/search",    icon: SearchIcon, label: "Search"    },
-  { href: "/library",   icon: Library,    label: "Library"   },
-  { href: "/liked",     icon: Heart,      label: "Liked"     },
-  { href: "/playlists", icon: ListMusic,  label: "Playlists" },
-  { href: "/podcasts",  icon: Mic,        label: "Podcasts"  },
+  { href: "/",          icon: Home,      label: "Home"     },
+  { href: "/library",   icon: Library,   label: "Library"  },
+  { href: "/liked",     icon: Heart,     label: "Liked"    },
+  { href: "/playlists", icon: ListMusic, label: "Playlists"},
+  { href: "/albums",    icon: Disc3,     label: "Albums"   },
+  { href: "/artists",   icon: Users,     label: "Artists"  },
+  { href: "/podcasts",  icon: Mic,       label: "Podcasts" },
+  { href: "/trending",  icon: Zap,       label: "Trending" },
 ];
 
 const SIDEBAR_EXTRA = [
   { href: "/recent",   icon: Clock,    label: "Recently Played" },
   { href: "/settings", icon: Settings, label: "Settings"        },
   { href: "/about",    icon: Info,     label: "About"           },
-  { href: "/login",    icon: LogIn,    label: "Login / Profile" },
+  { href: "/login",    icon: LogIn,    label: "Profile"         },
 ];
 
-const SIDEBAR_BOTTOM = [
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms",   label: "Terms"          },
-  { href: "/dmca",    label: "DMCA"           },
-  { href: "/about",   label: "About"          },
+const LEGAL = [
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms",   label: "Terms"   },
+  { href: "/dmca",    label: "DMCA"    },
+  { href: "/about",   label: "About"   },
 ];
 
 export default function AppShell({ children }) {
-  const path            = usePathname();
-  const { music }       = useMusicProvider() || {};
-  const { currentVideo} = useYT() || {};
-  const hasPlayer       = !!music || !!currentVideo;
+  const path        = usePathname();
+  const { currentVideo } = useYT() || {};
+  const hasPlayer   = !!currentVideo;
+  const [theme,     setThemeState] = useState("dark");
+
+  useEffect(() => {
+    const t = getTheme();
+    setThemeState(t);
+    applyTheme(t);
+    // Also apply to html/body for global CSS selectors
+    document.documentElement.setAttribute("data-theme", t);
+    document.body.setAttribute("data-theme", t);
+    const handler = (e) => {
+      setThemeState(e.detail);
+      document.documentElement.setAttribute("data-theme", e.detail);
+      document.body.setAttribute("data-theme", e.detail);
+    };
+    window.addEventListener("arise:theme:changed", handler);
+    return () => window.removeEventListener("arise:theme:changed", handler);
+  }, []);
+
+  const handleThemeToggle = () => {
+    toggleTheme();
+  };
 
   return (
-    <div className="remix-bg h-screen flex overflow-hidden">
+    <div className="remix-bg h-screen flex overflow-hidden" data-theme={theme}>
       <AnimatedBackground />
+      {theme === "light" && <AngelParticles />}
 
-      {/* ── Sidebar ─────────────────────────────────── */}
+      {/* ── Sidebar ─────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-56 flex-shrink-0 h-full overflow-hidden relative z-10"
-        style={{ background: "rgba(5,5,10,0.97)", borderRight: "1px solid rgba(255,0,60,0.07)" }}>
-        <div className="px-5 pt-6 pb-5 flex-shrink-0"><Logo /></div>
+        style={{ background: "var(--nav-bg)", borderRight: "1px solid var(--border-primary)" }}>
 
-        <nav className="px-3 flex-shrink-0 space-y-0.5">
+        <div className="px-5 pt-6 pb-4 flex-shrink-0">
+          <Logo />
+          <p className="mt-1.5 text-[9px] font-bold tracking-[0.25em] uppercase"
+            style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif" }}>
+            {theme === "light" ? "✦ Hear the Divine ✦" : "✦ Rise from the Shadows ✦"}
+          </p>
+        </div>
+
+        <nav className="px-3 flex-shrink-0 space-y-0.5 overflow-y-auto flex-1" style={{ scrollbarWidth: "none" }}>
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
             return (
               <Link key={href} href={href}
-                className={`remix-nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${active ? "active" : ""}`}
-                style={{ color: active ? "#FF003C" : "#aaaacc", background: active ? "rgba(255,0,60,0.08)" : "transparent" }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ffffff"; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}>
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
+                style={{
+                  color:      active ? "var(--accent)" : "var(--text-secondary)",
+                  background: active ? `color-mix(in srgb, var(--accent) 10%, transparent)` : "transparent",
+                  fontWeight: active ? "700" : "600",
+                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.background = "var(--bg-card)"; }}}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.background = "transparent"; }}}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-semibold">{label}</span>
+                <span className="text-sm">{label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="my-2 mx-3 h-px" style={{ background: "var(--border-subtle)" }} />
+
+          {SIDEBAR_EXTRA.map(({ href, icon: Icon, label }) => {
+            const active = path === href;
+            return (
+              <Link key={href} href={href}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm"
+                style={{
+                  color:      active ? "var(--accent)" : "var(--text-secondary)",
+                  background: active ? `color-mix(in srgb, var(--accent) 10%, transparent)` : "transparent",
+                  fontWeight: active ? "700" : "600",
+                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.background = "var(--bg-card)"; }}}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.background = "transparent"; }}}>
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-3 mt-5 flex-shrink-0">
-          <p className="px-3 mb-2 text-[0.6rem] font-bold tracking-[0.2em] uppercase"
-            style={{ color: "#666688", fontFamily: "Orbitron, sans-serif" }}>More</p>
-          <div className="space-y-0.5">
-            {SIDEBAR_EXTRA.map(({ href, icon: Icon, label }) => {
-              const active = path === href;
-              return (
-                <Link key={href} href={href}
-                  className={`remix-nav-item flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm ${active ? "active" : ""}`}
-                  style={{ color: active ? "#FF003C" : "#aaaacc", background: active ? "rgba(255,0,60,0.08)" : "transparent" }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ffffff"; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#aaaacc"; }}>
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="font-semibold">{label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        {/* ── Bottom: theme toggle + legal ──────────────── */}
+        <div className="flex-shrink-0 px-4 pb-4 pt-3"
+          style={{ borderTop: "1px solid var(--border-subtle)" }}>
 
-        <div className="flex-1" />
+          {/* Theme toggle */}
+          <button onClick={handleThemeToggle}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl mb-3 transition-all text-sm font-semibold"
+            style={{
+              background: theme === "light"
+                ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.05)",
+              border: `1px solid var(--border-subtle)`,
+              color: "var(--accent)",
+            }}>
+            {theme === "light"
+              ? <><Moon className="w-3.5 h-3.5" /> Switch to Dark</>
+              : <><Sun className="w-3.5 h-3.5" /> Switch to Light</>}
+          </button>
 
-        <div className="px-5 pb-5 flex-shrink-0 space-y-2 border-t"
-          style={{ borderColor: "rgba(255,255,255,0.05)", paddingTop: "14px" }}>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {SIDEBAR_BOTTOM.map(({ href, label }) => (
+          {/* Legal links */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+            {LEGAL.map(({ href, label }) => (
               <Link key={label} href={href}
-                className="text-[11px] font-semibold transition-colors duration-150"
-                style={{ color: "#7777aa" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#7777aa"; }}>
+                className="text-[11px] font-semibold transition-colors"
+                style={{ color: "var(--sidebar-bottom-text)" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--sidebar-bottom-text)"; }}>
                 {label}
               </Link>
             ))}
           </div>
-          <p style={{ color: "#555577", fontSize: "0.6rem", fontFamily: "Rajdhani, sans-serif" }}>
-            Arise · JioSaavn + YouTube
+          <p className="text-[11px] font-semibold" style={{ color: "var(--sidebar-bottom-text)" }}>
+            {theme === "light" ? "✨ Crafted in light by Sunil" : "🔥 Crafted in darkness by Sunil"}
           </p>
-          <p style={{ color: "#444466", fontSize: "0.55rem", fontFamily: "Rajdhani, sans-serif" }}>
-            Crafted in darkness by Sunil
+          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+            Arise · JioSaavn + YouTube
           </p>
         </div>
       </aside>
 
-      {/* ── Main column ─────────────────────────────── */}
+      {/* ── Main column ─────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
-        <TopBar />
+        <TopBar theme={theme} onThemeToggle={handleThemeToggle} />
         <main className="flex-1 overflow-y-auto" style={{ paddingBottom: hasPlayer ? "80px" : "24px" }}>
           {children}
         </main>
@@ -126,8 +176,7 @@ export default function AppShell({ children }) {
   );
 }
 
-// ── TopBar shows user avatar if logged in ─────────────────────────────────────
-function TopBar() {
+function TopBar({ theme, onThemeToggle }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -140,24 +189,32 @@ function TopBar() {
   return (
     <header className="flex-shrink-0 flex items-center px-4 md:px-6 h-14 gap-4"
       style={{
-        background: "rgba(5,5,10,0.92)", backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,0,60,0.06)",
+        background: "var(--topbar-bg)", backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid var(--border-primary)",
       }}>
       <div className="md:hidden flex-shrink-0"><Logo size="small" /></div>
       <div className="flex-1 max-w-lg mx-auto"><Search /></div>
 
-      {/* Avatar — shows Google photo or initials */}
+      {/* Theme toggle (mobile) */}
+      <button onClick={onThemeToggle}
+        className="md:hidden w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ color: "var(--accent)", background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+        {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+      </button>
+
+      {/* Avatar */}
       <Link href="/login"
-        className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden transition-all hover:scale-105 flex items-center justify-center"
+        className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center transition-all hover:scale-105"
         style={{
           background:  user?.avatar ? "transparent" : "linear-gradient(135deg, #8B0000, #7C3AED)",
-          boxShadow:   "0 0 12px rgba(255,0,60,0.3)",
-          border:      user ? "2px solid rgba(255,0,60,0.4)" : "none",
+          boxShadow:   `0 0 12px var(--accent-glow)`,
+          border:      user ? "2px solid var(--accent)" : "none",
         }}>
         {user?.avatar
           ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           : user?.name
-            ? <span className="text-xs font-black text-white" style={{ fontFamily: "Orbitron, sans-serif" }}>
+            ? <span className="text-xs font-black" style={{ color: "#fff", fontFamily: "Orbitron, sans-serif" }}>
                 {user.name[0].toUpperCase()}
               </span>
             : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -171,18 +228,18 @@ function TopBar() {
 
 function MobileNav({ path, hasPlayer }) {
   const items = [
-    { href: "/",          icon: Home,       label: "Home"    },
-    { href: "/search",    icon: SearchIcon, label: "Search"  },
-    { href: "/podcasts",  icon: Mic,        label: "Podcasts"},
-    { href: "/playlists", icon: ListMusic,  label: "Lists"   },
-    { href: "/login",     icon: LogIn,      label: "Profile" },
+    { href: "/",          icon: Home,      label: "Home"    },
+    { href: "/liked",     icon: Heart,     label: "Liked"   },
+    { href: "/playlists", icon: ListMusic, label: "Lists"   },
+    { href: "/artists",   icon: Users,     label: "Artists" },
+    { href: "/login",     icon: LogIn,     label: "Profile" },
   ];
   return (
     <nav className="md:hidden fixed left-0 right-0 z-40 flex items-center justify-around px-1"
       style={{
         bottom: hasPlayer ? "68px" : "0px", transition: "bottom 0.3s ease",
-        background: "rgba(5,5,10,0.98)", backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,0,60,0.08)",
+        background: "var(--nav-bg)", backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid var(--border-primary)",
         height: "56px",
       }}>
       {items.map(({ href, icon: Icon, label }) => {
@@ -190,7 +247,7 @@ function MobileNav({ path, hasPlayer }) {
         return (
           <Link key={href} href={href}
             className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all"
-            style={{ color: active ? "#FF003C" : "#7777aa" }}>
+            style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>
             <Icon className="w-5 h-5" />
             <span style={{ fontFamily: "Orbitron, sans-serif", fontSize: "0.5rem", letterSpacing: "0.1em" }}>
               {label}

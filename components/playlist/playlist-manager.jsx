@@ -82,17 +82,17 @@ function SongRow({ song, index, isPlaying, onPlay, onRemove, onDragStart, onDrag
       onDrop={() => onDrop(index)}
       className="flex items-center gap-3 p-2.5 rounded-xl group transition-all duration-200 cursor-pointer"
       style={{
-        background: isPlaying ? "rgba(255,0,60,0.08)" : "rgba(18,18,32,0.5)",
+        background: isPlaying ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "var(--bg-card)",
         border:     isPlaying ? "1px solid rgba(255,0,60,0.2)" : "1px solid rgba(255,255,255,0.04)",
       }}
-      onMouseEnter={e => { if (!isPlaying) { e.currentTarget.style.background = "rgba(28,28,48,0.8)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; } }}
-      onMouseLeave={e => { if (!isPlaying) { e.currentTarget.style.background = "rgba(18,18,32,0.5)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; } }}
+      onMouseEnter={e => { if (!isPlaying) { e.currentTarget.style.background = "var(--bg-card-hover)"; e.currentTarget.style.borderColor = "var(--border-subtle)"; } }}
+      onMouseLeave={e => { if (!isPlaying) { e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.borderColor = "var(--border-subtle)"; } }}
     >
       {/* Index / play indicator */}
       <div className="w-6 text-center flex-shrink-0">
         {isPlaying
           ? <div className="flex items-end justify-center gap-[2px] h-4">{[...Array(3)].map((_, i) => <div key={i} className="w-[2px] rounded-sm" style={{ background: "#FF003C", height: `${8 + i * 3}px`, animation: `bar${i+1} 0.6s ease-in-out ${i*0.1}s infinite alternate` }} />)}</div>
-          : <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#666688", fontFamily: "Orbitron, sans-serif" }}>{index + 1}</span>}
+          : <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif" }}>{index + 1}</span>}
       </div>
 
       {/* Thumbnail */}
@@ -100,8 +100,8 @@ function SongRow({ song, index, isPlaying, onPlay, onRemove, onDragStart, onDrag
         {resolving
           ? <div className="remix-shimmer w-full h-full" />
           : resolved.thumbnail
-            ? <img src={resolved.thumbnail} alt={resolved.name} className="w-full h-full object-cover" style={{ background: "rgba(18,18,32,0.8)" }} />
-            : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(18,18,32,0.8)" }}><Music2 className="w-4 h-4" style={{ color: "#44445a" }} /></div>
+            ? <img src={resolved.thumbnail} alt={resolved.name} className="w-full h-full object-cover" style={{ background: "var(--bg-card)" }} />
+            : <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--bg-card)" }}><Music2 className="w-4 h-4" style={{ color: "var(--text-faint)" }} /></div>
         }
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.5)" }}>
@@ -119,10 +119,10 @@ function SongRow({ song, index, isPlaying, onPlay, onRemove, onDragStart, onDrag
       {/* Song info */}
       <div className="flex-1 min-w-0" onClick={() => onPlay(resolved)}>
         <p className="text-sm font-semibold truncate leading-tight"
-          style={{ color: isPlaying ? "#FF003C" : "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
+          style={{ color: isPlaying ? "#FF003C" : "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>
           {song.name || "Unknown"}
         </p>
-        <p className="text-xs truncate mt-0.5" style={{ color: "#666688" }}>
+        <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>
           {song.artist || ""}
           {song.duration ? ` · ${song.duration}` : ""}
         </p>
@@ -131,9 +131,9 @@ function SongRow({ song, index, isPlaying, onPlay, onRemove, onDragStart, onDrag
       {/* Remove */}
       <button onClick={e => { e.stopPropagation(); onRemove(index); }}
         className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ color: "#44445a" }}
+        style={{ color: "var(--text-faint)" }}
         onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; e.currentTarget.style.background = "rgba(255,0,60,0.1)"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "#44445a"; e.currentTarget.style.background = "transparent"; }}>
+        onMouseLeave={e => { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}>
         <Trash2 className="w-3.5 h-3.5" />
       </button>
 
@@ -298,16 +298,16 @@ export default function PlaylistManager({ playlist, onUpdate, onDelete, onClose 
   const coverImg  = coverSong?.thumbnail || coverSong?.image || null;
 
   return (
-    <div className="flex flex-col h-full" style={{ color: "#e8e8f8" }}>
+    <div className="flex flex-col h-full" style={{ color: "var(--text-primary)" }}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 p-5 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="flex items-start gap-4">
           {/* Cover art */}
           <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 relative"
-            style={{ background: "rgba(18,18,32,0.8)", boxShadow: "0 0 20px rgba(255,0,60,0.15)" }}>
+            style={{ background: "var(--bg-card)", boxShadow: "0 0 20px rgba(255,0,60,0.15)" }}>
             {coverImg
               ? <img src={coverImg} alt={name} className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7" style={{ color: "#44445a" }} /></div>}
+              : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7" style={{ color: "var(--text-faint)" }} /></div>}
           </div>
 
           <div className="flex-1 min-w-0">
@@ -317,20 +317,20 @@ export default function PlaylistManager({ playlist, onUpdate, onDelete, onClose 
                 <input autoFocus value={name} onChange={e => setName(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
                   className="flex-1 rounded-lg px-3 py-1.5 text-sm font-bold outline-none"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,0,60,0.4)", color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }} />
-                <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,0,60,0.15)", color: "#FF003C" }}><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={() => { setEditingName(false); setName(playlist?.name || "Playlist"); }} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: "#44445a" }}><X className="w-3.5 h-3.5" /></button>
+                  style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,0,60,0.4)", color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }} />
+                <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--accent) 15%, transparent)", color: "#FF003C" }}><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={() => { setEditingName(false); setName(playlist?.name || "Playlist"); }} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: "var(--text-faint)" }}><X className="w-3.5 h-3.5" /></button>
               </div>
             ) : (
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-lg font-black truncate" style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8" }}>{name}</h2>
-                <button onClick={() => setEditingName(true)} className="flex-shrink-0 transition-colors" style={{ color: "#44445a" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#FF003C"} onMouseLeave={e => e.currentTarget.style.color = "#44445a"}>
+                <h2 className="text-lg font-black truncate" style={{ fontFamily: "Orbitron, sans-serif", color: "var(--text-primary)" }}>{name}</h2>
+                <button onClick={() => setEditingName(true)} className="flex-shrink-0 transition-colors" style={{ color: "var(--text-faint)" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#FF003C"} onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
-            <p className="text-xs" style={{ color: "#666688" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {songs.length} tracks
               {playlist?.source && <span style={{ color: "#9D4EDD" }}> · {playlist.source === "youtube" ? "YouTube" : playlist.source === "spotify" ? "Spotify" : "Imported"}</span>}
             </p>
@@ -346,18 +346,18 @@ export default function PlaylistManager({ playlist, onUpdate, onDelete, onClose 
               <button onClick={() => setShowSearch(s => !s)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
                 style={{
-                  background: showSearch ? "rgba(157,78,221,0.15)" : "rgba(255,255,255,0.05)",
+                  background: showSearch ? "rgba(157,78,221,0.15)" : "var(--border-subtle)",
                   border:     showSearch ? "1px solid rgba(157,78,221,0.3)" : "1px solid rgba(255,255,255,0.07)",
-                  color:      showSearch ? "#9D4EDD" : "#ccccee",
+                  color:      showSearch ? "#9D4EDD" : "var(--text-secondary)",
                   fontFamily: "Rajdhani, sans-serif",
                 }}>
                 <Plus className="w-3 h-3" /> Add Songs
               </button>
               <button onClick={handleDelete}
                 className="w-8 h-8 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
-                style={{ color: "#44445a", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; e.currentTarget.style.background = "rgba(255,0,60,0.08)"; e.currentTarget.style.borderColor = "rgba(255,0,60,0.2)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#44445a"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+                style={{ color: "var(--text-faint)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.06)" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#FF003C"; e.currentTarget.style.background = "color-mix(in srgb, var(--accent) 8%, transparent)"; e.currentTarget.style.borderColor = "rgba(255,0,60,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "var(--border-subtle)"; e.currentTarget.style.borderColor = "var(--border-subtle)"; }}>
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -368,29 +368,29 @@ export default function PlaylistManager({ playlist, onUpdate, onDelete, onClose 
         {showSearch && (
           <div className="mt-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#666688" }} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
               <input value={searchQ} onChange={e => handleSearchInput(e.target.value)}
                 placeholder="Search songs to add…"
                 className="w-full pl-9 pr-4 py-2 rounded-xl text-sm outline-none transition-all"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(157,78,221,0.25)", color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}
+                style={{ background: "var(--border-subtle)", border: "1px solid rgba(157,78,221,0.25)", color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}
                 onFocus={e => { e.currentTarget.style.borderColor = "rgba(157,78,221,0.5)"; }}
                 onBlur={e => { e.currentTarget.style.borderColor = "rgba(157,78,221,0.25)"; }} />
             </div>
-            {searching && <p className="text-xs mt-2 text-center" style={{ color: "#666688" }}>Searching…</p>}
+            {searching && <p className="text-xs mt-2 text-center" style={{ color: "var(--text-muted)" }}>Searching…</p>}
             {searchRes.length > 0 && (
               <div className="mt-2 space-y-1 max-h-52 overflow-y-auto">
                 {searchRes.map((s, i) => (
                   <button key={i} onClick={() => addSong(s)}
                     className="w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}
+                    style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.04)" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(157,78,221,0.08)"; e.currentTarget.style.borderColor = "rgba(157,78,221,0.15)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)"; }}>
+                    onMouseLeave={e => { e.currentTarget.style.background = "var(--border-subtle)"; e.currentTarget.style.borderColor = "var(--border-subtle)"; }}>
                     {s.thumbnail
                       ? <img src={s.thumbnail} alt={s.name} className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                      : <div className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(18,18,32,0.8)" }}><Music2 className="w-3.5 h-3.5" style={{ color: "#44445a" }} /></div>}
+                      : <div className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center" style={{ background: "var(--bg-card)" }}><Music2 className="w-3.5 h-3.5" style={{ color: "var(--text-faint)" }} /></div>}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>{s.name}</p>
-                      <p className="text-[10px] truncate" style={{ color: "#666688" }}>{s.artist}</p>
+                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{s.name}</p>
+                      <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{s.artist}</p>
                     </div>
                     <Plus className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#9D4EDD" }} />
                   </button>
@@ -405,9 +405,9 @@ export default function PlaylistManager({ playlist, onUpdate, onDelete, onClose 
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {songs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
-            <Music2 className="w-8 h-8 mb-2" style={{ color: "#44445a" }} />
-            <p className="text-sm" style={{ color: "#8888aa" }}>No songs yet</p>
-            <p className="text-xs mt-1" style={{ color: "#44445a" }}>Click "Add Songs" to search and add tracks</p>
+            <Music2 className="w-8 h-8 mb-2" style={{ color: "var(--text-faint)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No songs yet</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>Click "Add Songs" to search and add tracks</p>
           </div>
         ) : (
           songs.map((song, idx) => (

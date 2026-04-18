@@ -17,10 +17,10 @@ export default function MoodSection() {
     <section className="space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-lg font-bold" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
             Mood Playlists
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "#666688" }}>Curated for your state of mind</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Curated for your state of mind</p>
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export default function MoodSection() {
             onMouseLeave={e => {
               e.currentTarget.style.boxShadow = "none";
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
             }}
           >
             <span className="text-2xl absolute top-3 right-3 opacity-40 group-hover:opacity-70 transition-opacity">
@@ -48,7 +48,7 @@ export default function MoodSection() {
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
               style={{ background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)" }} />
             <div className="relative z-10">
-              <p className="font-bold text-sm leading-tight" style={{ color: "#e8e8f8", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+              <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
                 {title}
               </p>
               <p className="text-[10px] mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>{desc}</p>

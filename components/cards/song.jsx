@@ -34,7 +34,7 @@ export default function SongCard({ title, image, artist, id, desc }) {
           src={image}
           alt={title}
           className="blurz w-full h-[160px] sm:h-[175px] object-cover transition-transform duration-500 group-hover:scale-110"
-          style={{ background: "rgba(18,18,32,0.6)" }}
+          style={{ background: "var(--bg-card,0.6)" }}
         />
         {/* Dark overlay on hover */}
         <div
@@ -78,13 +78,13 @@ export default function SongCard({ title, image, artist, id, desc }) {
       <div className="mt-2.5 px-0.5">
         <p
           className="text-sm font-semibold truncate leading-tight transition-colors duration-200 group-hover:text-hellfire"
-          style={{ color: isActive ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}
+          style={{ color: isActive ? "#FF003C" : "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}
         >
           {title}
         </p>
-        {desc && <p className="text-xs mt-0.5 truncate" style={{ color: "#8888aa" }}>{desc}</p>}
+        {desc && <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{desc}</p>}
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs truncate" style={{ color: "#8888aa" }}>{artist}</p>
+          <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{artist}</p>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1">
             <AddToPlaylist song={{ id, name: title, artist, source: "saavn" }} size="sm" />
           </div>

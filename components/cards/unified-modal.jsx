@@ -18,6 +18,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT, showIframeOverElement, hideIframeContainer } from "@/hooks/use-youtube";
+import { getUnifiedRecent } from "@/components/providers/music-provider";
 import { getSongsSuggestions } from "@/lib/fetch";
 import { getRelatedVideos, searchYT } from "@/lib/youtube";
 import { muzoRelated, muzoSearch } from "@/lib/muzo";
@@ -244,7 +245,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
         {/* Source tabs — only when both are active */}
         {hasSaavn && hasYT ? (
           <div className="flex rounded-xl overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(12,12,22,0.9)" }}>
+            style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-elevated)" }}>
             <TabBtn active={tab === "saavn"} onClick={() => setTab("saavn")} color="#FF003C">
               <Music2 className="w-3 h-3" /> Saavn
             </TabBtn>
@@ -254,7 +255,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
           </div>
         ) : (
           <p className="text-xs font-bold uppercase tracking-widest"
-            style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif" }}>
+            style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif" }}>
             {tab === "yt" ? "— YouTube —" : "— Now Playing —"}
           </p>
         )}
@@ -263,9 +264,9 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
         <button onClick={tab === "saavn" ? toggleSaavnLike : toggleYtLike}
           className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
           style={{
-            background: (tab === "saavn" ? saavnLiked : ytLiked) ? "rgba(255,0,60,0.15)" : "rgba(255,255,255,0.05)",
+            background: (tab === "saavn" ? saavnLiked : ytLiked) ? "color-mix(in srgb, var(--accent) 15%, transparent)" : "var(--border-subtle)",
             border:     (tab === "saavn" ? saavnLiked : ytLiked) ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.08)",
-            color:      (tab === "saavn" ? saavnLiked : ytLiked) ? "#FF003C" : "#44445a",
+            color:      (tab === "saavn" ? saavnLiked : ytLiked) ? "#FF003C" : "var(--text-faint)",
           }}>
           <Heart className={`w-4 h-4 ${(tab === "saavn" ? saavnLiked : ytLiked) ? "fill-current" : ""}`} />
         </button>
@@ -276,7 +277,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
 
         {/* ══════ LEFT PANEL ══════ */}
         <div className="flex flex-col lg:w-[440px] xl:w-[500px] flex-shrink-0 px-6 sm:px-10 pt-6 pb-4 overflow-y-auto lg:border-r"
-          style={{ borderColor: "rgba(255,0,60,0.07)" }}>
+          style={{ borderColor: "color-mix(in srgb, var(--accent) 7%, transparent)" }}>
 
           {/* ── SAAVN ── */}
           {tab === "saavn" && (
@@ -312,8 +313,8 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                       {saavn.songData?.artists?.primary?.[0]?.name || ""}
                     </Link>
                     {saavn.songData?.album?.name && (
-                      <><span style={{ color: "#44445a" }}>·</span>
-                      <span className="text-xs truncate max-w-[160px]" style={{ color: "#8888aa" }}>
+                      <><span style={{ color: "var(--text-faint)" }}>·</span>
+                      <span className="text-xs truncate max-w-[160px]" style={{ color: "var(--text-muted)" }}>
                         {saavn.songData.album.name}
                       </span></>
                     )}
@@ -366,7 +367,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
               {/* Audio/Video mode toggle */}
               <div className="flex justify-center mb-4 flex-shrink-0">
                 <div className="flex rounded-xl overflow-hidden"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(12,12,22,0.9)" }}>
+                  style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-elevated)" }}>
                   <TabBtn active={yt.ytMode === "audio"} onClick={() => { yt.setYtMode("audio"); hideIframeContainer(); }} color="#FF003C">
                     <Music2 className="w-3 h-3" /> Audio Only
                   </TabBtn>
@@ -415,7 +416,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                     style={{ color: "#f0f0ff", fontFamily: "Rajdhani, sans-serif" }}>
                     {yt.currentVideo?.title || ""}
                   </p>
-                  <p className="text-sm mt-1 truncate" style={{ color: "#8888aa" }}>
+                  <p className="text-sm mt-1 truncate" style={{ color: "var(--text-muted)" }}>
                     {yt.currentVideo?.channelTitle || ""}
                   </p>
                 </div>
@@ -425,7 +426,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
               <div className="mb-4 flex-shrink-0">
                 <div
                   className="relative w-full h-1.5 rounded-full cursor-pointer group"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
+                  style={{ background: "var(--border-subtle)" }}
                   onClick={e => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -451,10 +452,10 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                   />
                 </div>
                 <div className="flex justify-between mt-1.5">
-                  <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
+                  <span style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
                     {yt.ytFormatTime ? yt.ytFormatTime(yt.ytCurrentTime || 0) : "0:00"}
                   </span>
-                  <span style={{ color: "#44445a", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
+                  <span style={{ color: "var(--text-faint)", fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem" }}>
                     {yt.ytFormatTime && yt.ytDuration > 0
                       ? yt.ytFormatTime(yt.ytDuration)
                       : (yt.currentVideo?.durationText || "")}
@@ -494,9 +495,9 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                 style={{
                   fontFamily: "Orbitron, sans-serif", fontSize: "0.55rem",
                   fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
-                  background: (tab === "saavn" ? saavnTab : ytTab) === t ? "rgba(255,0,60,0.15)" : "transparent",
+                  background: (tab === "saavn" ? saavnTab : ytTab) === t ? "color-mix(in srgb, var(--accent) 15%, transparent)" : "transparent",
                   border:     (tab === "saavn" ? saavnTab : ytTab) === t ? "1px solid rgba(255,0,60,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                  color:      (tab === "saavn" ? saavnTab : ytTab) === t ? "#FF003C" : "#44445a",
+                  color:      (tab === "saavn" ? saavnTab : ytTab) === t ? "#FF003C" : "var(--text-faint)",
                 }}>
                 {t === "queue"
                   ? `Queue (${tab === "saavn" ? saavn.queue.length : yt.queue.length})`
@@ -543,19 +544,26 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
               </>
             )}
 
-            {tab === "saavn" && saavnTab === "recent" && (
-              <>
-                {saavn.recentlyPlayed?.length === 0 && <EmptyState text="Your past is as dark as the void — play something" />}
-                {saavn.recentlyPlayed?.slice(0,25).map(({ id }) => {
-                  const s = saavnSugg.find(x => x.id === id);
-                  return (
-                    <SongRow key={`rec-${id}`} image={s?.image?.[1]?.url}
-                      name={s?.name || id} artist={s?.artists?.primary?.[0]?.name}
-                      isCurrent={id === saavn.music} onPlay={() => saavn.playSong(id)} />
-                  );
-                })}
-              </>
-            )}
+            {tab === "saavn" && saavnTab === "recent" && (() => {
+              const recentAll = getUnifiedRecent().slice(0, 25);
+              return (
+                <>
+                  {recentAll.length === 0 && <EmptyState text="Your past is as dark as the void — play something" />}
+                  {recentAll.map((item, i) => {
+                    const ytId = item.ytId || (/^[A-Za-z0-9_-]{11}$/.test(item.id||"") ? item.id : null);
+                    const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : null);
+                    return (
+                      <SongRow key={`rec-${i}`} image={thumb}
+                        name={item.name || item.title || "Unknown"} artist={item.artist || ""}
+                        isCurrent={ytId === yt.currentVideo?.id}
+                        onPlay={() => {
+                          if (ytId) yt.playVideo({ id: ytId, title: item.name||item.title, channelTitle: item.artist, thumbnail: thumb });
+                        }} />
+                    );
+                  })}
+                </>
+              );
+            })()}
 
             {tab === "yt" && ytTab === "queue" && (
               <>
@@ -597,7 +605,7 @@ function TabBtn({ active, onClick, color, children }) {
       style={{
         fontFamily:  "Orbitron, sans-serif", letterSpacing: "0.08em",
         background:  active ? `${color}22` : "transparent",
-        color:       active ? color : "#44445a",
+        color:       active ? color : "var(--text-faint)",
         borderRight: "1px solid rgba(255,255,255,0.06)",
       }}>
       {children}
@@ -609,7 +617,7 @@ function BtnRound({ onClick, title, loading, children }) {
   return (
     <button onClick={onClick} title={title}
       className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-      style={{ color: loading ? "#FF003C" : "#44445a", border: "1px solid rgba(255,255,255,0.06)" }}>
+      style={{ color: loading ? "#FF003C" : "var(--text-faint)", border: "1px solid rgba(255,255,255,0.06)" }}>
       {children}
     </button>
   );
@@ -620,7 +628,7 @@ function CtrlBtn({ onClick, active, activeColor = "#FF003C", dimmed, children })
     <button onClick={onClick}
       className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
       style={{
-        color:      active ? activeColor : dimmed ? "#2a2a3a" : "#8888aa",
+        color:      active ? activeColor : dimmed ? "var(--text-faint)" : "var(--text-muted)",
         background: active ? `${activeColor}18` : "transparent",
         border:     active ? `1px solid ${activeColor}44` : "1px solid rgba(255,255,255,0.06)",
       }}>
@@ -651,7 +659,7 @@ function SeekBar({ progress, onClick, timeLeft, timeRight }) {
   return (
     <div className="mb-4 flex-shrink-0">
       <div className="relative w-full h-1.5 rounded-full cursor-pointer group"
-        style={{ background: "rgba(255,255,255,0.08)" }} onClick={onClick}>
+        style={{ background: "var(--border-subtle)" }} onClick={onClick}>
         <div className="absolute left-0 top-0 h-full rounded-full pointer-events-none"
           style={{
             width:      `${progress}%`,
@@ -663,8 +671,8 @@ function SeekBar({ progress, onClick, timeLeft, timeRight }) {
           style={{ left: `calc(${progress}% - 7px)`, background: "#FF003C", boxShadow: "0 0 10px rgba(255,0,60,0.9)" }} />
       </div>
       <div className="flex justify-between mt-1.5">
-        <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeLeft}</span>
-        <span style={{ color: "#8888aa", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeRight}</span>
+        <span style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeLeft}</span>
+        <span style={{ color: "var(--text-muted)", fontFamily: "Orbitron, sans-serif", fontSize: "0.58rem" }}>{timeRight}</span>
       </div>
     </div>
   );
@@ -675,11 +683,11 @@ function VolumeSlider({ value, muted, onChange, onToggle }) {
     <div className="flex items-center gap-3 mb-2 flex-shrink-0">
       <button onClick={onToggle}
         className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
-        style={{ color: muted ? "#44445a" : "#8888aa", border: "1px solid rgba(255,255,255,0.06)" }}>
+        style={{ color: muted ? "var(--text-faint)" : "var(--text-muted)", border: "1px solid rgba(255,255,255,0.06)" }}>
         {muted || value === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </button>
       <div className="flex-1 relative h-1.5 rounded-full cursor-pointer group"
-        style={{ background: "rgba(255,255,255,0.08)" }}
+        style={{ background: "var(--border-subtle)" }}
         onClick={e => {
           const rect = e.currentTarget.getBoundingClientRect();
           onChange((e.clientX - rect.left) / rect.width);
@@ -702,23 +710,23 @@ function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
     <button onClick={onPlay}
       className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 group"
       style={{
-        background: isCurrent ? "rgba(255,0,60,0.1)" : "rgba(18,18,32,0.5)",
+        background: isCurrent ? "rgba(255,0,60,0.1)" : "var(--bg-card)",
         border:     isCurrent ? "1px solid rgba(255,0,60,0.25)" : "1px solid rgba(255,255,255,0.04)",
       }}
-      onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "rgba(24,24,40,0.9)"; }}
-      onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "rgba(18,18,32,0.5)"; }}>
+      onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "var(--bg-card-hover)"; }}
+      onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "var(--bg-card)"; }}>
       {index !== undefined && (
         <span className="w-5 text-center text-[0.55rem] flex-shrink-0"
-          style={{ color: isCurrent ? "#FF003C" : "#44445a", fontFamily: "Orbitron, sans-serif" }}>
+          style={{ color: isCurrent ? "#FF003C" : "var(--text-faint)", fontFamily: "Orbitron, sans-serif" }}>
           {isCurrent ? "▶" : index}
         </span>
       )}
       <img src={image || ""} alt={name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-        style={{ background: "rgba(18,18,32,0.8)" }} />
+        style={{ background: "var(--bg-card)" }} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate"
-          style={{ color: isCurrent ? "#FF003C" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{name}</p>
-        {artist && <p className="text-xs truncate" style={{ color: "#8888aa" }}>{artist}</p>}
+          style={{ color: isCurrent ? "#FF003C" : "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>{name}</p>
+        {artist && <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{artist}</p>}
       </div>
       {onQueue && (
         <button onClick={e => { e.stopPropagation(); onQueue(); }}
@@ -732,28 +740,30 @@ function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
 }
 
 function YTRow({ item, isActive, index, onPlay, onQueue, onRemove }) {
+  // Always ensure thumbnail — fallback to i.ytimg.com if missing
+  const thumb = item.thumbnail || (item.id ? `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg` : "");
   return (
     <button onClick={onPlay}
       className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 group"
       style={{
-        background: isActive ? "rgba(255,30,0,0.1)" : "rgba(18,18,32,0.5)",
+        background: isActive ? "rgba(255,30,0,0.1)" : "var(--bg-card)",
         border:     isActive ? "1px solid rgba(255,30,0,0.25)" : "1px solid rgba(255,255,255,0.04)",
       }}
-      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(24,24,40,0.9)"; }}
-      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "rgba(18,18,32,0.5)"; }}>
+      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-card-hover)"; }}
+      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-card)"; }}>
       {index !== undefined && (
         <span className="w-5 text-center text-[0.55rem] flex-shrink-0"
-          style={{ color: isActive ? "#FF4444" : "#44445a", fontFamily: "Orbitron, sans-serif" }}>
+          style={{ color: isActive ? "#FF4444" : "var(--text-faint)", fontFamily: "Orbitron, sans-serif" }}>
           {isActive ? "▶" : index}
         </span>
       )}
-      <img src={item.thumbnail || ""} alt={item.title}
+      <img src={thumb} alt={item.title}
         className="w-[56px] h-[32px] rounded object-cover flex-shrink-0"
-        style={{ background: "rgba(18,18,32,0.8)" }} />
+        style={{ background: "var(--bg-card)" }} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold line-clamp-1"
-          style={{ color: isActive ? "#FF4444" : "#ccccee", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
-        <p className="text-[10px] truncate" style={{ color: "#8888aa" }}>{item.channelTitle}</p>
+          style={{ color: isActive ? "#FF4444" : "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+        <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{item.channelTitle}</p>
       </div>
       <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {onQueue && (
@@ -779,7 +789,7 @@ function Shimmer() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: "rgba(18,18,32,0.4)" }}>
+        <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: "var(--bg-card)" }}>
           <div className="remix-shimmer w-10 h-10 rounded-lg flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="remix-shimmer h-3 w-4/5 rounded" />
@@ -794,7 +804,7 @@ function Shimmer() {
 function EmptyState({ text }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <p className="text-xs leading-relaxed max-w-[200px]" style={{ color: "#44445a", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
+      <p className="text-xs leading-relaxed max-w-[200px]" style={{ color: "var(--text-faint)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.04em" }}>
         {text}
       </p>
     </div>

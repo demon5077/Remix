@@ -1,220 +1,230 @@
 "use client";
-import { useState } from "react";
-import PodcastCard from "@/components/podcast/podcast-card";
-import PodcastPlayer from "@/components/podcast/podcast-player";
-import Footer from "@/components/page/footer";
-import { Mic, TrendingUp, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useYT } from "@/hooks/use-youtube";
+import { muzoSearch } from "@/lib/muzo";
+import { Mic, Play, RefreshCw, ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
-const PODCASTS = [
-  {
-    id: "p1",
-    title: "Arise Sessions",
-    host: "Sunil & Guests",
-    image: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=400&q=80",
-    duration: "1:12:04",
-    episode: "Ep 12 · The Anatomy of Darkness",
-    category: "Music",
-  },
-  {
-    id: "p2",
-    title: "Midnight Code",
-    host: "Dev Underground",
-    image: "https://images.unsplash.com/photo-1519337265831-281ec6cc8514?w=400&q=80",
-    duration: "58:30",
-    episode: "Ep 8 · Building in the Dark",
-    category: "Tech",
-  },
-  {
-    id: "p3",
-    title: "Dark Frequencies",
-    host: "Elena Voss",
-    image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=80",
-    duration: "1:04:17",
-    episode: "Ep 5 · Signal & Noise",
-    category: "Music",
-  },
-  {
-    id: "p4",
-    title: "Crime Noir",
-    host: "Marcus Black",
-    image: "https://images.unsplash.com/photo-1509023464722-18d996393ca8?w=400&q=80",
-    duration: "47:52",
-    episode: "Ep 22 · The Last Witness",
-    category: "Crime",
-  },
-  {
-    id: "p5",
-    title: "The Void Speaks",
-    host: "Anonymous",
-    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80",
-    duration: "1:18:39",
-    episode: "Ep 3 · Echoes",
-    category: "Philosophy",
-  },
-  {
-    id: "p6",
-    title: "Neural Nights",
-    host: "AI Research Collective",
-    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&q=80",
-    duration: "55:11",
-    episode: "Ep 17 · The Consciousness Problem",
-    category: "Science",
-  },
+const CATEGORIES = [
+  { id: "mythology",  label: "🕉️ Mythology & Spirituality", q: "indian mythology spiritual podcast"            },
+  { id: "crime",      label: "🔍 True Crime India",          q: "true crime india podcast hindi"               },
+  { id: "comedy",     label: "😂 Stand-Up & Comedy",         q: "indian comedy podcast stand up hindi"         },
+  { id: "cricket",    label: "🏏 Cricket & Sports",          q: "cricket sports podcast india hindi"           },
+  { id: "startup",    label: "💡 Startup & Entrepreneurship",q: "startup business podcast india hindi"         },
+  { id: "history",    label: "🏛️ Indian History",            q: "indian history podcast hindi"                 },
+  { id: "bollywood",  label: "🎬 Bollywood Behind the Scenes",q: "bollywood podcast behind scenes celebrity"   },
+  { id: "health",     label: "🧘 Health & Ayurveda",         q: "health ayurveda wellness podcast india hindi" },
+  { id: "horror",     label: "👻 Horror & Paranormal",       q: "horror paranormal stories podcast hindi"      },
+  { id: "finance",    label: "💰 Personal Finance India",    q: "personal finance india investing podcast"     },
+  { id: "philosophy", label: "🧠 Philosophy & Life",         q: "philosophy life lessons podcast hindi"        },
+  { id: "kids",       label: "🧒 Kids & Stories",            q: "kids stories podcast hindi children"          },
 ];
 
-const CATEGORIES = ["All", "Music", "Tech", "Crime", "Philosophy", "Science", "True Crime", "Comedy"];
-
 export default function PodcastsPage() {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [playingId,      setPlayingId]      = useState(null);
-  const [playerPodcast,  setPlayerPodcast]  = useState(null);
+  const yt = useYT() || {};
+  const [category,    setCategory]    = useState(null);
+  const [podcasts,    setPodcasts]    = useState({});
+  const [loading,     setLoading]     = useState({});
+  const [openPodcast, setOpenPodcast] = useState(null);
+  const [episodes,    setEpisodes]    = useState([]);
+  const [loadingEp,   setLoadingEp]   = useState(false);
+  const [featured,    setFeatured]    = useState([]);
+  const [loadingF,    setLoadingF]    = useState(true);
 
-  const filtered = activeCategory === "All"
-    ? PODCASTS
-    : PODCASTS.filter(p => p.category === activeCategory);
+  // Load featured podcasts on mount
+  useEffect(() => {
+    (async () => {
+      setLoadingF(true);
+      try {
+        const r = await muzoSearch("popular indian podcast", "podcasts", 8);
+        if (!r?.length) {
+          const fallback = await muzoSearch("best podcast india hindi", "videos", 8);
+          setFeatured((fallback||[]).slice(0,8).map(normalise));
+        } else {
+          setFeatured((r||[]).slice(0,8).map(normalise));
+        }
+      } catch {}
+      setLoadingF(false);
+    })();
+  }, []);
 
-  const handlePlay = (podcast) => {
-    setPlayingId(podcast.id);
-    setPlayerPodcast(podcast);
+  const normalise = (item) => ({
+    id:           item.videoId || item.id || item.browseId,
+    title:        item.title   || item.name,
+    channel:      (item.artists||[]).map(a=>a.name||a).join(", ") || item.author || item.channelTitle || "",
+    thumbnail:    item.thumbnails?.[0]?.url || item.thumbnail || `https://i.ytimg.com/vi/${item.videoId||item.id}/mqdefault.jpg`,
+    duration:     item.duration || "",
+    type:         item.type || "podcast",
+  });
+
+  const loadCategory = async (cat) => {
+    if (podcasts[cat.id]) { setCategory(cat); return; }
+    setLoading(l => ({ ...l, [cat.id]: true }));
+    try {
+      // Try podcasts filter first, fall back to videos
+      let r = await muzoSearch(cat.q, "podcasts", 12);
+      if (!r?.length) r = await muzoSearch(cat.q, "videos", 12);
+      setPodcasts(p => ({ ...p, [cat.id]: (r||[]).map(normalise) }));
+    } catch { toast.error("Failed to load podcasts"); }
+    setLoading(l => ({ ...l, [cat.id]: false }));
+    setCategory(cat);
   };
 
-  return (
-    <div className="min-h-screen" style={{ color: "#ccccee" }}>
-      {/* Hero */}
-      <section className="relative px-6 md:px-12 pt-14 pb-10 overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(157,78,221,0.1) 0%, transparent 70%)", filter: "blur(60px)" }} />
+  const openEpisodes = async (podcast) => {
+    setOpenPodcast(podcast);
+    setEpisodes([]);
+    if (!podcast.id) return;
+    setLoadingEp(true);
+    try {
+      const r = await muzoSearch(`${podcast.title} ${podcast.channel}`, "videos", 8);
+      setEpisodes((r||[]).map(normalise).filter(e => e.id !== podcast.id));
+    } catch {}
+    setLoadingEp(false);
+  };
 
-        <div className="flex items-center gap-3 mb-4">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #4B0082, #9D4EDD)", boxShadow: "0 0 20px rgba(157,78,221,0.4)" }}
-          >
-            <Mic className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="text-xs tracking-[0.3em] uppercase"
-              style={{ color: "#9D4EDD", fontFamily: "Orbitron, sans-serif" }}>
-              ✦ Now Streaming ✦
-            </p>
-            <h1 className="text-3xl md:text-5xl font-black leading-none"
-              style={{
-                fontFamily: "Orbitron, sans-serif",
-                background: "linear-gradient(135deg, #9D4EDD, #FF003C)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              }}>
-              Podcasts
-            </h1>
-          </div>
-        </div>
-        <p className="text-sm max-w-md leading-relaxed" style={{ color: "#8888aa" }}>
-          Stories, conversations, and signals from the underground. Tune in to voices that speak when others sleep.
-        </p>
-      </section>
+  const playPodcast = (item) => {
+    if (!item.id) { toast.error("Can't play this podcast"); return; }
+    // Only play if it's a video ID (11 chars)
+    if (/^[A-Za-z0-9_-]{11}$/.test(item.id)) {
+      yt.playVideo?.({
+        id:           item.id,
+        title:        item.title,
+        channelTitle: item.channel,
+        thumbnail:    item.thumbnail,
+      });
+      toast(`🎙 Playing: ${item.title?.slice(0, 40)}`);
+    } else {
+      toast.error("This podcast needs a direct YouTube link to play");
+    }
+  };
 
-      <div className="mx-6 md:mx-12 h-[1px]"
-        style={{ background: "linear-gradient(to right, rgba(157,78,221,0.3), transparent)" }} />
-
-      {/* Category filters */}
-      <div className="px-6 md:px-12 py-5">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {CATEGORIES.map(cat => {
-            const isActive = cat === activeCategory;
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200"
-                style={{
-                  fontFamily: "Rajdhani, sans-serif",
-                  letterSpacing: "0.04em",
-                  background: isActive ? "linear-gradient(135deg, #4B0082, #9D4EDD)" : "rgba(255,255,255,0.04)",
-                  color: isActive ? "#ffffff" : "#8888aa",
-                  border: isActive ? "1px solid rgba(157,78,221,0.5)" : "1px solid rgba(255,255,255,0.06)",
-                  boxShadow: isActive ? "0 0 12px rgba(157,78,221,0.3)" : "none",
-                }}
-              >
-                {cat}
-              </button>
-            );
-          })}
+  if (openPodcast) return (
+    <div className="px-4 md:px-8 py-8" style={{ color: "var(--text-primary)" }}>
+      <button onClick={() => setOpenPodcast(null)}
+        className="flex items-center gap-2 mb-5 text-sm font-semibold"
+        style={{ color: "var(--text-secondary)" }}
+        onMouseEnter={e => e.currentTarget.style.color = "var(--accent)"}
+        onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary)"}>
+        <ChevronLeft className="w-4 h-4" /> Back to Podcasts
+      </button>
+      <div className="flex gap-4 mb-6 p-4 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+        <img src={openPodcast.thumbnail} alt={openPodcast.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold mb-1" style={{ color: "var(--accent)", fontFamily: "Orbitron, sans-serif" }}>PODCAST</p>
+          <h2 className="text-xl font-black mb-1 truncate" style={{ fontFamily: "Orbitron, sans-serif" }}>{openPodcast.title}</h2>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{openPodcast.channel}</p>
+          <button onClick={() => playPodcast(openPodcast)}
+            className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold"
+            style={{ background: "var(--accent)", color: "#fff", fontFamily: "Orbitron, sans-serif" }}>
+            <Play className="w-3.5 h-3.5" /> Play Episode
+          </button>
         </div>
       </div>
+      <h3 className="text-sm font-bold mb-3" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>MORE FROM THIS SHOW</h3>
+      {loadingEp ? <div className="space-y-2">{Array.from({length:4}).map((_,i)=><div key={i} className="h-14 rounded-xl remix-shimmer" />)}</div>
+      : episodes.map((ep,i) => <PodcastRow key={i} item={ep} onPlay={() => playPodcast(ep)} />)}
+    </div>
+  );
 
-      {/* Featured (top 2) */}
-      <section className="px-6 md:px-12 pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Star className="w-4 h-4" style={{ color: "#9D4EDD" }} />
-          <h2 className="text-base font-bold" style={{ fontFamily: "Rajdhani, sans-serif", color: "#e8e8f8" }}>
-            Featured
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filtered.slice(0, 2).map(pod => (
-            <button
-              key={pod.id}
-              onClick={() => handlePlay(pod)}
-              className="flex items-center gap-4 p-3.5 rounded-2xl text-left transition-all duration-300 group"
-              style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid " + (playingId === pod.id ? "rgba(157,78,221,0.3)" : "rgba(255,255,255,0.04)"),
-                boxShadow: playingId === pod.id ? "0 0 30px rgba(157,78,221,0.1)" : "none",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = "rgba(157,78,221,0.2)";
-                e.currentTarget.style.background = "rgba(157,78,221,0.04)";
-              }}
-              onMouseLeave={e => {
-                if (playingId !== pod.id) {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                }
-              }}
-            >
-              <img src={pod.image} alt={pod.title}
-                className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-sm truncate"
-                  style={{ color: playingId === pod.id ? "#9D4EDD" : "#e8e8f8", fontFamily: "Rajdhani, sans-serif" }}>
-                  {pod.title}
-                </p>
-                <p className="text-xs truncate mt-0.5" style={{ color: "#FF003C" }}>{pod.episode}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8888aa" }}>{pod.host} · {pod.duration}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
+  return (
+    <div className="px-4 md:px-8 py-8" style={{ color: "var(--text-primary)" }}>
+      <div className="flex items-center gap-3 mb-2">
+        <Mic className="w-6 h-6" style={{ color: "var(--accent)" }} />
+        <h1 className="text-2xl font-black" style={{ fontFamily: "Orbitron, sans-serif" }}>Podcasts</h1>
+      </div>
+      <p className="mb-5 text-sm" style={{ color: "var(--text-muted)" }}>
+        Real podcasts from YouTube Music · powered by Muzo API
+      </p>
 
-      {/* All grid */}
-      <section className="px-6 md:px-12 pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-4 h-4" style={{ color: "#9D4EDD" }} />
-          <h2 className="text-base font-bold" style={{ fontFamily: "Rajdhani, sans-serif", color: "#e8e8f8" }}>
-            All Podcasts
-          </h2>
+      {/* Featured */}
+      {!category && (
+        <div className="mb-8">
+          <h2 className="text-sm font-bold mb-3" style={{ color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.1em" }}>FEATURED</h2>
+          {loadingF ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({length:8}).map((_,i)=><div key={i} className="space-y-2"><div className="aspect-square rounded-xl remix-shimmer" /><div className="h-3 w-3/4 rounded remix-shimmer" /></div>)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {featured.map((p,i) => <PodcastCard key={i} item={p} onPlay={() => playPodcast(p)} onOpen={() => openEpisodes(p)} />)}
+            </div>
+          )}
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
-          {filtered.map(pod => (
-            <PodcastCard
-              key={pod.id}
-              {...pod}
-              isPlaying={playingId === pod.id}
-              onPlay={() => handlePlay(pod)}
-            />
-          ))}
-        </div>
-      </section>
+      )}
 
-      <Footer />
+      {/* Category chips */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {category && (
+          <button onClick={() => setCategory(null)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)", fontFamily: "Rajdhani, sans-serif" }}>
+            <ChevronLeft className="w-3 h-3" /> All
+          </button>
+        )}
+        {CATEGORIES.map(cat => (
+          <button key={cat.id} onClick={() => loadCategory(cat)}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+            style={{
+              background: category?.id === cat.id ? "var(--accent)" : "var(--bg-card)",
+              border: `1px solid ${category?.id === cat.id ? "transparent" : "var(--border-subtle)"}`,
+              color: category?.id === cat.id ? "#fff" : "var(--text-secondary)",
+              fontFamily: "Rajdhani, sans-serif",
+            }}>
+            {cat.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Podcast player modal */}
-      {playerPodcast && (
-        <PodcastPlayer
-          podcast={playerPodcast}
-          onClose={() => { setPlayerPodcast(null); setPlayingId(null); }}
-        />
+      {/* Category results */}
+      {category && (
+        loading[category.id]
+          ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{Array.from({length:8}).map((_,i)=><div key={i} className="space-y-2"><div className="aspect-square rounded-xl remix-shimmer" /><div className="h-3 w-3/4 rounded remix-shimmer" /></div>)}</div>
+          : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {(podcasts[category.id]||[]).map((p,i) => <PodcastCard key={i} item={p} onPlay={() => playPodcast(p)} onOpen={() => openEpisodes(p)} />)}
+            </div>
       )}
     </div>
+  );
+}
+
+function PodcastCard({ item, onPlay, onOpen }) {
+  return (
+    <div className="group space-y-2">
+      <div className="relative aspect-square rounded-xl overflow-hidden cursor-pointer" onClick={onOpen}
+        style={{ background: "var(--bg-card)" }}>
+        <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}>
+          <button onClick={e => { e.stopPropagation(); onPlay(); }}
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ background: "var(--accent)", boxShadow: "0 0 20px var(--accent-glow)" }}>
+            <Play className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold"
+          style={{ background: "var(--accent)", color: "#fff", fontFamily: "Orbitron, sans-serif" }}>
+          PODCAST
+        </div>
+      </div>
+      <p className="text-xs font-semibold line-clamp-2 leading-tight" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+      <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{item.channel}</p>
+    </div>
+  );
+}
+
+function PodcastRow({ item, onPlay }) {
+  return (
+    <button onClick={onPlay}
+      className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left group transition-all mb-1.5"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+      onMouseEnter={e => e.currentTarget.style.background = "var(--bg-card-hover)"}
+      onMouseLeave={e => e.currentTarget.style.background = "var(--bg-card)"}>
+      <img src={item.thumbnail} alt={item.title} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{item.title}</p>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>{item.channel}</p>
+      </div>
+      <Play className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ color: "var(--accent)" }} />
+    </button>
   );
 }
