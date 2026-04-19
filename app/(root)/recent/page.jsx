@@ -89,7 +89,7 @@ export default function RecentPage() {
         id:           ytId,
         title:        safeStr(item.name || item.title),
         channelTitle: safeStr(item.artist),
-        thumbnail:    item.thumbnail || `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg`,
+        thumbnail:    item.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
       });
       toast(`▶ ${safeStr(item.name || item.title).slice(0, 40)}`);
     } else {
@@ -126,7 +126,7 @@ export default function RecentPage() {
         <div className="space-y-1.5">
           {items.map((item, i) => {
             const ytId = item.ytId || (/^[A-Za-z0-9_-]{11}$/.test(safeStr(item.id)) ? item.id : null);
-            const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : null);
+            const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : null);
             const name  = safeStr(item.name || item.title || "Unknown");
             const artist = safeStr(item.artist || "");
             return (

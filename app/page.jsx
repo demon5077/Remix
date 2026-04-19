@@ -74,11 +74,11 @@ const ALBUM_SKELETONS = Array(6).fill(null);
 
 // ── Demo YT items shown when no API key — lets users see the UI ─────────
 const DEMO_YT = [
-  { id:"dQw4w9WgXcQ",  title:"Rick Astley — Never Gonna Give You Up",  channelTitle:"Rick Astley",   thumbnail:"https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",  durationText:"3:33" },
-  { id:"JGwWNGJdvx8",  title:"Ed Sheeran — Shape of You",              channelTitle:"Ed Sheeran",    thumbnail:"https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg",   durationText:"4:24" },
-  { id:"ktvTqknDobU",  title:"Imagine Dragons — Radioactive",          channelTitle:"ImagineDragons",thumbnail:"https://i.ytimg.com/vi/ktvTqknDobU/mqdefault.jpg",   durationText:"3:05" },
-  { id:"hT_nvWreIhg",  title:"OneRepublic — Counting Stars",           channelTitle:"OneRepublic",   thumbnail:"https://i.ytimg.com/vi/hT_nvWreIhg/mqdefault.jpg",   durationText:"4:17" },
-  { id:"YQHsXMglC9A",  title:"Adele — Hello",                          channelTitle:"Adele",         thumbnail:"https://i.ytimg.com/vi/YQHsXMglC9A/mqdefault.jpg",   durationText:"6:07" },
+  { id:"dQw4w9WgXcQ",  title:"Rick Astley — Never Gonna Give You Up",  channelTitle:"Rick Astley",   thumbnail:"https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",  durationText:"3:33" },
+  { id:"JGwWNGJdvx8",  title:"Ed Sheeran — Shape of You",              channelTitle:"Ed Sheeran",    thumbnail:"https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg",   durationText:"4:24" },
+  { id:"ktvTqknDobU",  title:"Imagine Dragons — Radioactive",          channelTitle:"ImagineDragons",thumbnail:"https://i.ytimg.com/vi/ktvTqknDobU/hqdefault.jpg",   durationText:"3:05" },
+  { id:"hT_nvWreIhg",  title:"OneRepublic — Counting Stars",           channelTitle:"OneRepublic",   thumbnail:"https://i.ytimg.com/vi/hT_nvWreIhg/hqdefault.jpg",   durationText:"4:17" },
+  { id:"YQHsXMglC9A",  title:"Adele — Hello",                          channelTitle:"Adele",         thumbnail:"https://i.ytimg.com/vi/YQHsXMglC9A/hqdefault.jpg",   durationText:"6:07" },
 ];
 
 // ── Demo podcast data ───────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export default function HomePage() {
           id:           item.videoId || item.id,
           title:        item.title   || item.name,
           channelTitle: item.artist  || item.channelTitle || "",
-          thumbnail:    item.thumbnail || (item.thumbnails?.[0]?.url) || `https://i.ytimg.com/vi/${item.videoId || item.id}/mqdefault.jpg`,
+          thumbnail:    item.thumbnail || (item.thumbnails?.[0]?.url) || `https://i.ytimg.com/vi/${item.videoId || item.id}/hqdefault.jpg`,
           durationText: item.duration || "",
         })).filter(i => i.id);
         if (items.length) setYtTrending(items.length ? normalised : DEMO_YT);
@@ -160,12 +160,43 @@ export default function HomePage() {
             id:           i.videoId || i.id,
             title:        i.title   || i.name,
             channelTitle: i.artist  || i.channelTitle || "",
-            thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/mqdefault.jpg`,
+            thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/hqdefault.jpg`,
           })).filter(i => i.id);
           if (normalised.length) setYtLofi(normalised);
         }
       }).catch(() => {});
     }
+
+    // ── Live Podcasts via Muzo ─────────────────────────────────────────
+    const podcastQueries = [
+      "popular indian podcast",
+      "best hindi podcast",
+      "podcast india",
+    ];
+    (async () => {
+      for (const q of podcastQueries) {
+        try {
+          let results = await muzoSearch(q, "podcasts", 10);
+          if (!results?.length) results = await muzoSearch(q, "videos", 10);
+          if (results?.length) {
+            const mapped = results
+              .filter(i => i.videoId || i.id)
+              .map(i => ({
+                id:       i.videoId || i.id,
+                ytId:     i.videoId || i.id,
+                title:    i.title   || i.name || "Podcast",
+                host:     (i.artists||[]).map(a => a.name||a).join(", ") || i.channelTitle || i.author || "",
+                image:    i.thumbnails?.[2]?.url || i.thumbnails?.[1]?.url || i.thumbnails?.[0]?.url
+                          || i.thumbnail || `https://i.ytimg.com/vi/${i.videoId||i.id}/hqdefault.jpg`,
+                duration: i.duration || "",
+                episode:  "",
+                category: "Podcast",
+              }));
+            if (mapped.length) { setPodcasts(mapped); break; }
+          }
+        } catch {}
+      }
+    })();
   }, []);
 
   // Extract unique artists from latest songs

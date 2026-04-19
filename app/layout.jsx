@@ -48,16 +48,7 @@ export default function RootLayout({ children }) {
         <link rel="icon" type="image/png" sizes="32x32"   href="/ios/32.png"  />
         <link rel="icon" type="image/png" sizes="192x192" href="/ios/192.png" />
       </head>
-      {/* Theme init — must be first to prevent flash of wrong theme */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        (function(){
-          try {
-            var t = localStorage.getItem('arise:theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            document.body && document.body.setAttribute('data-theme', t);
-          } catch(e) {}
-        })();
-      ` }} />
+
       <body style={{ fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif" }}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark" disableTransitionOnChange>
           <NextTopLoader color="#FF003C" height={2} showSpinner={false}

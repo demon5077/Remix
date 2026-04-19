@@ -31,14 +31,14 @@ export default function TrendingPage() {
           id:           s.videoId || s.id,
           title:        s.title   || s.name,
           channelTitle: (s.artists||[]).map(a=>a.name||a).join(", ") || s.artist || "",
-          thumbnail:    s.thumbnails?.[0]?.url || s.thumbnail || `https://i.ytimg.com/vi/${s.videoId||s.id}/mqdefault.jpg`,
+          thumbnail:    s.thumbnails?.[0]?.url || s.thumbnail || `https://i.ytimg.com/vi/${s.videoId||s.id}/hqdefault.jpg`,
           views:        s.views || "",
         }));
         const videos = (t?.videos || []).map(v => ({
           id:           v.videoId || v.id,
           title:        v.title   || v.name,
           channelTitle: v.author  || v.channelTitle || "",
-          thumbnail:    v.thumbnail || `https://i.ytimg.com/vi/${v.videoId||v.id}/mqdefault.jpg`,
+          thumbnail:    v.thumbnail || `https://i.ytimg.com/vi/${v.videoId||v.id}/hqdefault.jpg`,
           views:        v.views || "",
         }));
         results = [...songs, ...videos].filter(i => i.id);
@@ -59,7 +59,7 @@ export default function TrendingPage() {
           id:           i.videoId || i.id,
           title:        i.title   || i.name,
           channelTitle: (i.artists||[]).map(a=>a.name||a).join(", ") || i.author || "",
-          thumbnail:    i.thumbnails?.[0]?.url || i.thumbnail || `https://i.ytimg.com/vi/${i.videoId||i.id}/mqdefault.jpg`,
+          thumbnail:    i.thumbnails?.[0]?.url || i.thumbnail || `https://i.ytimg.com/vi/${i.videoId||i.id}/hqdefault.jpg`,
           views:        i.views || "",
         })).filter(i => i.id);
       }
