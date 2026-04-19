@@ -36,7 +36,7 @@ export default function AlbumsPage() {
         ...a,
         thumbnail: a.thumbnails?.[2]?.url || a.thumbnails?.[1]?.url || a.thumbnails?.[0]?.url
                    || a.thumbnail || a.coverArt
-                   || (a.videoId ? `https://i.ytimg.com/vi/${a.videoId}/hqdefault.jpg` : ""),
+                   || (a.videoId ? `https://i.ytimg.com/vi/${a.videoId}/maxresdefault.jpg` : ""),
       }));
       setAlbums(mapped.slice(0, 20));
     } catch { toast.error("Failed to load albums"); }
@@ -55,7 +55,7 @@ export default function AlbumsPage() {
         id:           t.videoId || t.id,
         title:        t.title   || t.name,
         artist:       (t.artists||[]).map(a=>a.name||a).join(", ") || album.artist || "",
-        thumbnail:    t.thumbnail || `https://i.ytimg.com/vi/${t.videoId||t.id}/mqdefault.jpg`,
+        thumbnail:    t.thumbnail || `https://i.ytimg.com/vi/${t.videoId||t.id}/maxresdefault.jpg`,
         duration:     t.duration || "",
       })).filter(t => t.id));
     } catch { toast.error("Could not load album tracks"); }

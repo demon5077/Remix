@@ -188,8 +188,8 @@ export default function SettingsPage() {
         <div>
           {/* Appearance */}
           <Section title="Appearance" icon={Palette}>
-            <Row icon={theme === "dark" ? Sun : Moon}
-              label={theme === "dark" ? "Switch to Light (Angel) Theme" : "Switch to Dark (Demon) Theme"}
+            <Row icon={theme === "light" ? Moon : Sun}
+              label={theme === "dark" ? "Switch to Light ✨ Angel Theme" : "Switch to Dark 🔥 Demon Theme"}
               desc={theme === "dark" ? "Golden particles · Divine vibes · Angelic slogans" : "Crimson glow · Dark atmosphere · Rise from shadows"}
               right={<Toggle value={theme === "light"} onChange={handleTheme} />}
               onClick={handleTheme} />

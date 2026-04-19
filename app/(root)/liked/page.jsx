@@ -30,7 +30,7 @@ export default function LikedPage() {
       name:      v.title       || v.name,
       title:     v.title       || v.name,
       artist:    v.channelTitle|| v.artist || "",
-      thumbnail: v.thumbnail   || `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+      thumbnail: v.thumbnail   || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
       source:    "youtube",
     }));
 

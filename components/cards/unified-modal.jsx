@@ -122,7 +122,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
           id:           i.videoId || i.id,
           title:        i.title   || i.name,
           channelTitle: i.artist  || i.channelTitle || "",
-          thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/mqdefault.jpg`,
+          thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/hqdefault.jpg`,
           durationText: i.duration || "",
         }));
         setYtRelated(valid);
@@ -152,7 +152,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
     const muzoItems = await muzoSearch(q, "songs", 3).catch(() => []);
     if (muzoItems?.length) {
       const first = muzoItems[0];
-      const vid   = { id: first.videoId || first.id, title: first.title, channelTitle: (first.artists || []).map(a => a.name || a).join(", "), thumbnail: first.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${first.videoId || first.id}/mqdefault.jpg` };
+      const vid   = { id: first.videoId || first.id, title: first.title, channelTitle: (first.artists || []).map(a => a.name || a).join(", "), thumbnail: first.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${first.videoId || first.id}/hqdefault.jpg` };
       yt.playVideo(vid);
       setSaavnYtSearching(false);
       setTab("yt");
@@ -226,7 +226,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
     : (yt.currentVideo?.thumbnail || "");
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "rgba(2,2,8,0.98)" }}>
+    <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--bg-elevated)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }}>
 
       {/* ── Ambient bg ─────────────────────────────────────────── */}
       {bgImg && (
@@ -238,11 +238,11 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
           }} />
       )}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(135deg, rgba(139,0,0,0.08) 0%, rgba(2,2,8,0.85) 100%)" }} />
+        style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, color-mix(in srgb, var(--bg-elevated) 85%, transparent) 100%)" }} />
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 h-14 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,0,60,0.08)" }}>
+        style={{ borderBottom: "1px solid var(--border-primary)" }}>
 
         <button onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
@@ -285,7 +285,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
 
         {/* ══════ LEFT PANEL ══════ */}
         <div className="flex flex-col lg:w-[440px] xl:w-[500px] flex-shrink-0 px-6 sm:px-10 pt-6 pb-4 overflow-y-auto lg:border-r"
-          style={{ borderColor: "color-mix(in srgb, var(--accent) 7%, transparent)" }}>
+          style={{ borderColor: "var(--border-primary)" }}>
 
           {/* ── SAAVN ── */}
           {tab === "saavn" && (
@@ -495,7 +495,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
 
           {/* Tab bar */}
           <div className="flex gap-1.5 px-5 py-3 flex-shrink-0"
-            style={{ borderBottom: "1px solid rgba(255,0,60,0.06)" }}>
+            style={{ borderBottom: "1px solid var(--border-primary)" }}>
             {(tab === "saavn" ? ["related","queue","recent"] : ["queue","related"]).map(t => (
               <button key={t}
                 onClick={() => tab === "saavn" ? setSaavnTab(t) : setYtTab(t)}
@@ -559,7 +559,7 @@ export default function UnifiedModal({ open, onClose, activeSource }) {
                   {recentAll.length === 0 && <EmptyState text="Your past is as dark as the void — play something" />}
                   {recentAll.map((item, i) => {
                     const ytId = item.ytId || (/^[A-Za-z0-9_-]{11}$/.test(item.id||"") ? item.id : null);
-                    const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg` : null);
+                    const thumb = item.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : null);
                     return (
                       <SongRow key={`rec-${i}`} image={thumb}
                         name={item.name || item.title || "Unknown"} artist={item.artist || ""}
@@ -749,7 +749,7 @@ function SongRow({ image, name, artist, isCurrent, index, onPlay, onQueue }) {
 
 function YTRow({ item, isActive, index, onPlay, onQueue, onRemove }) {
   // Always ensure thumbnail — fallback to i.ytimg.com if missing
-  const thumb = item.thumbnail || (item.id ? `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg` : "");
+  const thumb = item.thumbnail || (item.id ? `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg` : "");
   return (
     <button onClick={onPlay}
       className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 group"

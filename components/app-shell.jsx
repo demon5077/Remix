@@ -136,9 +136,9 @@ export default function AppShell({ children }) {
               border: `1px solid var(--border-subtle)`,
               color: "var(--accent)",
             }}>
-            {theme === "light"
-              ? <><Moon className="w-3.5 h-3.5" /> Switch to Dark</>
-              : <><Sun className="w-3.5 h-3.5" /> Switch to Light</>}
+            {theme === "dark"
+              ? <><Sun className="w-3.5 h-3.5" /> Switch to Light ✨</>
+              : <><Moon className="w-3.5 h-3.5" /> Switch to Dark 🔥</>}
           </button>
 
           {/* Legal links */}
