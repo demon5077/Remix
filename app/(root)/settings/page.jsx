@@ -30,10 +30,10 @@ function Section({ title, icon: Icon, children, color }) {
 
 function Row({ icon: Icon, label, desc, right, onClick, danger, last }) {
   return (
-    <button onClick={onClick || (() => {})}
+    <div onClick={onClick || undefined}
       className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all"
-      style={{ borderBottom: last ? "none" : "1px solid var(--border-subtle)" }}
-      onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-card-hover)"; }}
+      style={{ borderBottom: last ? "none" : "1px solid var(--border-subtle)", cursor: onClick ? "pointer" : "default" }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.background = "var(--bg-card-hover)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
       {Icon && (
         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -49,7 +49,7 @@ function Row({ icon: Icon, label, desc, right, onClick, danger, last }) {
         {desc && <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{desc}</p>}
       </div>
       <div className="flex-shrink-0 ml-2">{right ?? <ChevronRight className="w-4 h-4" style={{ color: "var(--text-faint)" }} />}</div>
-    </button>
+    </div>
   );
 }
 
@@ -104,23 +104,38 @@ export default function SettingsPage() {
       if (saved.showVideo !== undefined) setShowVideo(saved.showVideo);
     } catch {}
 
-    // Count stored data
-    try {
-      const liked    = JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").length;
-      const recent   = JSON.parse(localStorage.getItem("arise:recent")   || "[]").length;
-      const playlists= getImportedPlaylists().length + (s?.playlists?.length || 0);
-      let cacheBytes = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        cacheBytes += (localStorage.getItem(key) || "").length * 2;
-      }
-      const cacheKB = (cacheBytes / 1024).toFixed(0);
-      setDataStash({ liked, recent, playlists, cache: `${cacheKB} KB` });
-    } catch {}
-
-    const handler = (e) => setThemeState(e.detail);
-    window.addEventListener("arise:theme:changed", handler);
-    return () => window.removeEventListener("arise:theme:changed", handler);
+    // Count stored data (extracted to function for re-use)
+    const refreshCounts = () => {
+      try {
+        const ytL   = JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").length;
+        const saavnL= JSON.parse(localStorage.getItem("remix:likes")    || "[]").length;
+        const liked  = ytL + saavnL;
+        const recent = JSON.parse(localStorage.getItem("arise:recent")  || "[]").length;
+        const freshS = getSession();
+        const playlists = getImportedPlaylists().length + (freshS?.playlists?.length || 0);
+        let cacheBytes = 0;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          cacheBytes += (localStorage.getItem(key) || "").length * 2;
+        }
+        const cacheKB = (cacheBytes / 1024).toFixed(0);
+        setDataStash({ liked, recent, playlists, cache: `${cacheKB} KB` });
+      } catch {}
+    };
+    refreshCounts();
+    window.addEventListener("arise:yt:playing",     refreshCounts);
+    window.addEventListener("arise:saavn:playing",   refreshCounts);
+    window.addEventListener("arise:session:changed", refreshCounts);
+    window.addEventListener("storage",               refreshCounts);
+    const themeHandler = (e) => setThemeState(e.detail);
+    window.addEventListener("arise:theme:changed", themeHandler);
+    return () => {
+      window.removeEventListener("arise:yt:playing",     refreshCounts);
+      window.removeEventListener("arise:saavn:playing",   refreshCounts);
+      window.removeEventListener("arise:session:changed", refreshCounts);
+      window.removeEventListener("storage",               refreshCounts);
+      window.removeEventListener("arise:theme:changed",  themeHandler);
+    };
   }, []);
 
   const save = (key, val) => {

@@ -16,10 +16,10 @@ export default function LibraryPage() {
   const [plCnt,     setPlCnt]     = useState(0);
   const [session,   setSession_]  = useState(null);
 
-  useEffect(() => {
+  const refreshStats = () => {
     const r = getUnifiedRecent().slice(0, 16);
     setRecent(r);
-    const liked = (() => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").length; } catch { return 0; } })();
+    const liked  = (() => { try { return JSON.parse(localStorage.getItem("arise:yt:likes") || "[]").length; } catch { return 0; } })();
     const sLiked = (() => { try { return JSON.parse(localStorage.getItem("remix:likes") || "[]").length; } catch { return 0; } })();
     setLikedCnt(liked + sLiked);
     const s = getSession();
@@ -27,6 +27,21 @@ export default function LibraryPage() {
     const imported = getImportedPlaylists().length;
     const userPls  = s?.playlists?.length || 0;
     setPlCnt(imported + userPls);
+  };
+
+  useEffect(() => {
+    refreshStats();
+    // Re-run when songs play (YT or Saavn)
+    window.addEventListener("arise:yt:playing",    refreshStats);
+    window.addEventListener("arise:saavn:playing",  refreshStats);
+    window.addEventListener("arise:session:changed",refreshStats);
+    window.addEventListener("storage",              refreshStats);
+    return () => {
+      window.removeEventListener("arise:yt:playing",    refreshStats);
+      window.removeEventListener("arise:saavn:playing",  refreshStats);
+      window.removeEventListener("arise:session:changed",refreshStats);
+      window.removeEventListener("storage",              refreshStats);
+    };
   }, []);
 
   const QUICK_LINKS = [

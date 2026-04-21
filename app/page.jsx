@@ -19,6 +19,7 @@ import {
 } from "@/lib/fetch";
 import { getTrending, searchYT, hasApiKey } from "@/lib/youtube";
 import { muzoTrending, muzoSearch, hasMuzoApi } from "@/lib/muzo";
+import { getTheme } from "@/lib/theme";
 import { toast } from "sonner";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT } from "@/hooks/use-youtube";
@@ -92,6 +93,14 @@ const DEMO_PODCASTS = [
 
 export default function HomePage() {
   const yt = useYT() || {};
+  const [theme, setThemeHome] = useState("dark");
+  useEffect(() => {
+    setThemeHome(getTheme());
+    const h = (e) => setThemeHome(e.detail);
+    window.addEventListener("arise:theme:changed", h);
+    return () => window.removeEventListener("arise:theme:changed", h);
+  }, []);
+  const isLight = theme === "light";
   const [latest,     setLatest]     = useState(SONG_SKELETONS);
   const [trending,   setTrending]   = useState(SONG_SKELETONS);
   const [albums,     setAlbums]     = useState(ALBUM_SKELETONS);
@@ -270,22 +279,22 @@ export default function HomePage() {
 
         {/* ── Top Artists ──────────────────────────────── */}
         {artists.length > 0 && (
-          <ScrollSection title="🎤 Top Artists" subtitle="Voices conjured from the depths">
+          <ScrollSection title="🎤 Top Artists" subtitle={isLight ? "Blessed voices of the divine" : "Voices conjured from the depths"}>
             {artists.map(a => (
               <ArtistCard key={a.id} id={a.id} name={a.name}
                 image={a.image?.[2]?.url ||
-                  `https://az-avatar.vercel.app/api/avatar/?bgColor=0f0f0f&fontSize=60&text=${a.name?.[0]?.toUpperCase() || "U"}`}
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name || "A")}&background=8B0000&color=fff&size=200&bold=true&font-size=0.5`}
               />
             ))}
           </ScrollSection>
         )}
 
         {/* ── Albums ───────────────────────────────────── */}
-        <ScrollSection title="💿 Albums" subtitle="Grimoires of sound sealed in blood" href="/search/latest album 2025">
+        <ScrollSection title="💿 Albums" subtitle={isLight ? "Sacred albums of celestial harmony" : "Grimoires of sound sealed in blood"} href="/search/latest album 2025">
           {Array.isArray(albums) && albums.map((a, i) =>
             a ? (
               <AlbumCard key={a.id} id={`album/${a.id}`}
-                image={a.image?.[2]?.url || a.image?.[1]?.url}
+                image={a.image?.[2]?.url || a.image?.[1]?.url || a.image?.[0]?.url}
                 title={a.name}
                 artist={a.artists?.primary?.[0]?.name || a.description}
                 lang={a.language} />
@@ -294,7 +303,7 @@ export default function HomePage() {
         </ScrollSection>
 
         {/* ── Bollywood ────────────────────────────────── */}
-        <ScrollSection title="🎬 Bollywood Hits" subtitle="Mortal realm anthems" href="/search/bollywood hits">
+        <ScrollSection title="🎬 Bollywood Hits" subtitle={isLight ? "Joyful anthems of celebration" : "Mortal realm anthems"} href="/search/bollywood hits">
           {Array.isArray(bollywood) && bollywood.map((s, i) =>
             s ? (
               <SongCard key={s.id} id={s.id}
@@ -318,7 +327,7 @@ export default function HomePage() {
         </ScrollSection>
 
         {/* ── Podcasts (live from YouTube Music via Muzo) ── */}
-        <ScrollSection title="🎙️ Podcasts" subtitle="Live from YouTube Music" href="/podcasts">
+        <ScrollSection title="🎙️ Podcasts" subtitle={isLight ? "Blessed podcasts from above" : "Live from YouTube Music"} href="/podcasts">
           {(podcasts.length > 0 ? podcasts : DEMO_PODCASTS).slice(0, 8).map(pod => (
             <PodcastCard key={pod.id} {...pod}
               isPlaying={playingPod === pod.id}
