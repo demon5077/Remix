@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMusicProvider } from "@/hooks/use-context";
 import { useYT, hideIframeContainer } from "@/hooks/use-youtube";
 import { IoPause, IoPlay } from "react-icons/io5";
@@ -10,13 +10,12 @@ import {
 import UnifiedModal from "./unified-modal";
 import AddToPlaylist from "@/components/playlist/add-to-playlist";
 
-function WaveViz({ playing, color }) {
-  const c = color || "var(--accent)";
+function WaveViz({ playing }) {
   return (
     <div className="flex items-end gap-[2px] h-4 flex-shrink-0">
       {[1,2,3,4,5].map(i => (
         <div key={i} style={{
-          width: 2, minHeight: 3, borderRadius: 1, background: c,
+          width: 2, minHeight: 3, borderRadius: 1, background: "var(--accent)",
           animation: playing ? `pw${i} ${0.4+i*0.1}s ease-in-out infinite alternate` : "none",
           height: playing ? undefined : 3, opacity: playing ? 0.9 : 0.3,
         }} />
@@ -42,13 +41,15 @@ export default function Player() {
   const [showVol,      setShowVol]      = useState(false);
   const volTimeout = useRef(null);
 
-  // Determine which source is active
-  if (yt?.currentVideo && activeSource !== "yt")    setActiveSource("yt");
-  if (!yt?.currentVideo && saavn?.isFallback && saavn?.music && activeSource !== "saavn") setActiveSource("saavn");
+  // Detect active source
+  useEffect(() => {
+    if (yt?.currentVideo) setActiveSource("yt");
+    else if (saavn?.isFallback && saavn?.music) setActiveSource("saavn");
+  }, [yt?.currentVideo?.id, saavn?.music, saavn?.isFallback]);
 
-  const isSaavn   = activeSource === "saavn" && !!saavn?.music && saavn?.isFallback;
+  const isSaavn   = activeSource === "saavn" && !!saavn?.music && !!saavn?.isFallback;
   const isYT      = !!yt?.currentVideo;
-  const isPlaying = isYT ? yt.playing : (saavn?.playing || false);
+  const isPlaying = isYT ? (yt?.playing || false) : (saavn?.playing || false);
 
   if (!isYT && !isSaavn) return null;
 
@@ -58,8 +59,8 @@ export default function Player() {
   const progress    = isYT ? (yt.ytProgress || 0) : (saavn?.progress || 0);
   const currentTime = isYT ? (yt.ytCurrentTime || 0) : (saavn?.currentTime || 0);
   const duration    = isYT ? (yt.ytDuration || 0) : (saavn?.duration || 0);
-  const isMuted     = isYT ? yt.ytMuted : saavn?.muted;
-  const vol         = isYT ? yt.ytVolume : (saavn?.volume || 1);
+  const isMuted     = isYT ? (yt.ytMuted || false) : (saavn?.muted || false);
+  const vol         = isYT ? (yt.ytVolume || 1) : (saavn?.volume || 1);
 
   const fmt = (s) => {
     if (!s || isNaN(s)) return "0:00";
@@ -82,6 +83,35 @@ export default function Player() {
     else      saavn?.togglePlay?.();
   };
 
+  const handleNext = (e) => {
+    e.stopPropagation();
+    if (isYT) yt.next?.();
+    else if (isSaavn && saavn?.queue?.length > 0) {
+      const [next] = saavn.queue;
+      saavn.playSong?.(typeof next === "string" ? next : next?.id);
+    }
+  };
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    if (isYT) yt.prev?.();
+    else if (isSaavn) {
+      if ((saavn.currentTime || 0) > 3) saavn.seek?.(0);
+    }
+  };
+
+  const handleSkipFwd = (e) => {
+    e.stopPropagation();
+    if (isYT && yt.ytSeek) yt.ytSeek(Math.min((yt.ytDuration || 999), currentTime + 10));
+    else if (isSaavn && saavn?.seek) saavn.seek(Math.min(duration, currentTime + 10));
+  };
+
+  const handleSkipBack = (e) => {
+    e.stopPropagation();
+    if (isYT && yt.ytSeek) yt.ytSeek(Math.max(0, currentTime - 10));
+    else if (isSaavn && saavn?.seek) saavn.seek(Math.max(0, currentTime - 10));
+  };
+
   const handleMute = (e) => {
     e.stopPropagation();
     if (isYT) yt.toggleYtMute?.();
@@ -98,8 +128,9 @@ export default function Player() {
 
   const handleClose = (e) => {
     e.stopPropagation();
-    if (isYT) { yt.stop?.(); hideIframeContainer?.(); setActiveSource(null); }
-    else      { saavn?.stopPlayback?.(); setActiveSource(null); }
+    if (isYT) { yt.stop?.(); hideIframeContainer?.(); }
+    if (isSaavn) saavn?.stopPlayback?.();
+    setActiveSource(null);
   };
 
   const showVolume = () => {
@@ -116,7 +147,7 @@ export default function Player() {
         style={{
           background:    "var(--player-bg)",
           backdropFilter:"blur(40px)",
-          WebkitBackdropFilter: "blur(40px)",
+          WebkitBackdropFilter:"blur(40px)",
           borderTop:     "1px solid var(--border-primary)",
           boxShadow:     "0 -4px 40px rgba(0,0,0,0.15)",
         }}>
@@ -132,14 +163,14 @@ export default function Player() {
               boxShadow:  `0 0 6px color-mix(in srgb, var(--accent) 50%, transparent)`,
             }} />
           <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-            style={{ left: `calc(${Math.min(progress, 100)}% - 7px)`, background: "var(--accent)" }} />
+            style={{ left: `calc(${Math.min(progress,100)}% - 7px)`, background: "var(--accent)" }} />
         </div>
 
-        {/* Main row */}
-        <div className="grid h-[68px]" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
+        {/* ── DESKTOP layout (hidden on mobile) ──────────────────── */}
+        <div className="hidden sm:grid h-[68px]" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
 
           {/* LEFT: art + title */}
-          <button className="flex items-center gap-3 pl-3 sm:pl-4 min-w-0" onClick={() => setModalOpen(true)}>
+          <button className="flex items-center gap-3 pl-4 min-w-0" onClick={() => setModalOpen(true)}>
             <div className="relative flex-shrink-0">
               {isPlaying && (
                 <div className="absolute -inset-[5px] rounded-[14px] pointer-events-none"
@@ -169,62 +200,37 @@ export default function Player() {
 
           {/* CENTER: controls */}
           <div className="flex items-center justify-center gap-1.5 px-2">
-            {/* Repeat/Shuffle */}
-            {isSaavn
-              ? <button onClick={e => { e.stopPropagation(); saavn?.toggleLoop?.(); }}
-                  className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center transition-all"
-                  style={{ color: saavn?.isLooping ? "var(--accent)" : "var(--text-faint)", background: saavn?.isLooping ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "transparent" }}>
-                  {saavn?.isLooping ? <Repeat1 className="w-3.5 h-3.5" /> : <Repeat className="w-3.5 h-3.5" />}
-                </button>
-              : <button className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center" style={{ color: "var(--text-faint)" }}>
-                  <Shuffle className="w-3.5 h-3.5" />
-                </button>}
-
-            {/* Skip back 10s */}
-            <button onClick={e => { e.stopPropagation(); if (isYT && yt.ytSeek) yt.ytSeek(Math.max(0, currentTime-10)); else if (isSaavn && saavn?.seek) saavn.seek(Math.max(0, currentTime-10)); }}
-              className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center transition-colors"
-              style={{ color: "var(--text-faint)" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>
+            <button onClick={isSaavn ? (e => { e.stopPropagation(); saavn?.toggleLoop?.(); }) : (e => { e.stopPropagation(); })}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+              style={{ color: (isSaavn && saavn?.isLooping) ? "var(--accent)" : "var(--text-faint)" }}>
+              {(isSaavn && saavn?.isLooping) ? <Repeat1 className="w-3.5 h-3.5" /> : <Repeat className="w-3.5 h-3.5" />}
+            </button>
+            <button onClick={handleSkipBack} className="w-8 h-8 rounded-full flex items-center justify-center transition-all" style={{ color: "var(--text-faint)" }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"} onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>
               <SkipBack className="w-3.5 h-3.5" />
             </button>
-
-            {/* Play/Pause */}
             <button onClick={handlePlayPause}
               className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90"
               style={{
-                background: isPlaying
-                  ? "linear-gradient(135deg, var(--accent-2), var(--accent))"
-                  : "color-mix(in srgb, var(--accent) 15%, transparent)",
-                border:    isPlaying ? "none" : "1px solid color-mix(in srgb, var(--accent) 40%, transparent)",
-                boxShadow: isPlaying ? "0 0 24px color-mix(in srgb, var(--accent) 50%, transparent)" : "none",
+                background: isPlaying ? "linear-gradient(135deg, var(--accent-2), var(--accent))" : "color-mix(in srgb, var(--accent) 15%, transparent)",
+                border:     isPlaying ? "none" : "1px solid color-mix(in srgb, var(--accent) 40%, transparent)",
+                boxShadow:  isPlaying ? "0 0 24px color-mix(in srgb, var(--accent) 50%, transparent)" : "none",
               }}>
-              {isPlaying
-                ? <IoPause className="w-4 h-4 text-white" />
-                : <IoPlay  className="w-4 h-4 text-white ml-0.5" />}
+              {isPlaying ? <IoPause className="w-4 h-4 text-white" /> : <IoPlay className="w-4 h-4 text-white ml-0.5" />}
             </button>
-
-            {/* Skip forward 10s */}
-            <button onClick={e => { e.stopPropagation(); if (isYT && yt.ytSeek) yt.ytSeek(Math.min(duration||999, currentTime+10)); else if (isSaavn && saavn?.seek) saavn.seek(Math.min(duration, currentTime+10)); }}
-              className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center transition-colors"
-              style={{ color: "var(--text-faint)" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>
+            <button onClick={handleSkipFwd} className="w-8 h-8 rounded-full flex items-center justify-center transition-all" style={{ color: "var(--text-faint)" }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"} onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>
               <SkipForward className="w-3.5 h-3.5" />
             </button>
-
-            {/* Close */}
-            <button onClick={handleClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-              style={{ color: "var(--text-faint)" }}
+            <button onClick={handleClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-all" style={{ color: "var(--text-faint)" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "color-mix(in srgb, var(--accent) 10%, transparent)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}>
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* RIGHT: time + volume + add to playlist + expand */}
-          <div className="hidden sm:flex items-center justify-end gap-2 pr-3">
+          {/* RIGHT: time + volume + add + expand */}
+          <div className="flex items-center justify-end gap-2 pr-3">
             {duration > 0 && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 <span style={{ color: "var(--accent)", fontFamily: "Orbitron, sans-serif", fontSize: "0.52rem" }}>{fmt(currentTime)}</span>
@@ -232,47 +238,77 @@ export default function Player() {
                 <span style={{ color: "var(--text-faint)", fontFamily: "Orbitron, sans-serif", fontSize: "0.52rem" }}>{fmt(duration)}</span>
               </div>
             )}
-
-            {/* Volume */}
-            <div className="flex items-center gap-1.5"
-              onMouseEnter={showVolume} onMouseLeave={() => clearTimeout(volTimeout.current)}>
+            <div className="flex items-center gap-1.5" onMouseEnter={showVolume} onMouseLeave={() => clearTimeout(volTimeout.current)}>
               <button onClick={handleMute}
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0"
-                style={{ color: isMuted ? "var(--text-faint)" : "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "var(--text-primary)"; showVolume(); }}
-                onMouseLeave={e => { e.currentTarget.style.color = isMuted ? "var(--text-faint)" : "var(--text-secondary)"; }}>
+                style={{ color: isMuted ? "var(--text-faint)" : "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}>
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
-              <div className="overflow-hidden transition-all duration-300 flex items-center"
-                style={{ width: showVol ? "72px" : "0px", opacity: showVol ? 1 : 0 }}>
+              <div className="overflow-hidden transition-all duration-300 flex items-center" style={{ width: showVol ? "72px" : "0px", opacity: showVol ? 1 : 0 }}>
                 <div className="relative w-[72px] h-1.5 rounded-full cursor-pointer group flex-shrink-0"
-                  style={{ background: "var(--border-subtle)" }}
-                  onClick={handleVol}>
+                  style={{ background: "var(--border-subtle)" }} onClick={handleVol}>
                   <div className="h-full rounded-full pointer-events-none"
-                    style={{ width: `${(isMuted ? 0 : (vol||0)) * 100}%`, background: "linear-gradient(to right, var(--accent-2), var(--accent))" }} />
-                  <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                    style={{ left: `calc(${(isMuted ? 0 : (vol||0)) * 100}% - 6px)`, background: "var(--accent)" }} />
+                    style={{ width: `${(isMuted ? 0 : vol) * 100}%`, background: "linear-gradient(to right, var(--accent-2), var(--accent))" }} />
                 </div>
               </div>
             </div>
-
-            {/* Add to playlist */}
             {title && (
-              <AddToPlaylist song={{
-                id:     isYT ? yt.currentVideo?.id : saavn?.music,
-                ytId:   isYT ? yt.currentVideo?.id : null,
-                name:   title, artist: sub, thumbnail,
-                source: isYT ? "youtube" : "saavn",
-              }} size="sm" />
+              <AddToPlaylist song={{ id: isYT ? yt.currentVideo?.id : saavn?.music, ytId: isYT ? yt.currentVideo?.id : null, name: title, artist: sub, thumbnail, source: isYT ? "youtube" : "saavn" }} size="sm" />
             )}
-
-            {/* Expand */}
             <button onClick={() => setModalOpen(true)}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
               style={{ color: "var(--text-faint)", border: "1px solid var(--border-subtle)" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.borderColor = "var(--border-subtle)"; }}>
               <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── MOBILE layout (visible only on mobile) ──────────────── */}
+        <div className="sm:hidden h-[64px] flex items-center px-3 gap-2">
+
+          {/* Thumbnail — tappable to open modal */}
+          <button onClick={() => setModalOpen(true)} className="flex-shrink-0 relative">
+            {thumbnail
+              ? <img src={thumbnail} alt={title} className="w-10 h-10 rounded-lg object-cover"
+                  style={{ border: isPlaying ? "1.5px solid var(--accent)" : "1.5px solid var(--border-subtle)" }} />
+              : <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ background: "var(--bg-card)", border: "1.5px solid var(--border-subtle)" }}>
+                  <ListMusic className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                </div>}
+          </button>
+
+          {/* Title + artist — tappable to open modal */}
+          <button onClick={() => setModalOpen(true)} className="flex-1 min-w-0 text-left">
+            <p className="text-sm font-bold truncate leading-tight" style={{ color: "var(--text-primary)", fontFamily: "Rajdhani, sans-serif" }}>{title}</p>
+            <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{sub}</p>
+          </button>
+
+          {/* Mobile controls: prev / play-pause / next / close */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={handlePrev}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ color: "var(--text-faint)" }}>
+              <SkipBack className="w-4 h-4" />
+            </button>
+            <button onClick={handlePlayPause}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90"
+              style={{
+                background: isPlaying ? "linear-gradient(135deg, var(--accent-2), var(--accent))" : "color-mix(in srgb, var(--accent) 15%, transparent)",
+                border: isPlaying ? "none" : "1px solid color-mix(in srgb, var(--accent) 40%, transparent)",
+              }}>
+              {isPlaying ? <IoPause className="w-4 h-4 text-white" /> : <IoPlay className="w-4 h-4 text-white ml-0.5" />}
+            </button>
+            <button onClick={handleNext}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ color: "var(--text-faint)" }}>
+              <SkipForward className="w-4 h-4" />
+            </button>
+            <button onClick={handleClose}
+              className="w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ color: "var(--text-faint)" }}>
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

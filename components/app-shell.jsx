@@ -202,6 +202,12 @@ function TopBar({ theme, onThemeToggle }) {
         style={{ color: "var(--accent)", background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
         {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
       </button>
+      {/* Settings icon (mobile) */}
+      <a href="/settings"
+        className="md:hidden w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ color: "var(--text-secondary)", background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+        <Settings className="w-4 h-4" />
+      </a>
 
       {/* Avatar */}
       <Link href="/login"

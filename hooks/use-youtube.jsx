@@ -255,10 +255,39 @@ export function YTProvider({ children }) {
     }
   }, [state.playing, state.currentVideo]);
 
-  // When video changes → update iframe src
+  // When video changes → update iframe src + auto-fetch related for queue
   useEffect(() => {
     setVideoId(state.currentVideo ? state.currentVideo.id : null);
+    // When a new song starts, auto-populate queue with related if empty
+    if (state.currentVideo?.id && state.queue.length === 0) {
+      import("@/lib/muzo").then(({ muzoRelated }) => {
+        muzoRelated(state.currentVideo.id).then(items => {
+          if (!items?.length) return;
+          const q = items.filter(i => i.videoId || i.id).slice(0, 10).map(i => ({
+            id:           i.videoId || i.id,
+            title:        i.title   || i.name,
+            channelTitle: i.artist  || i.channelTitle || "",
+            thumbnail:    i.thumbnail || `https://i.ytimg.com/vi/${i.videoId || i.id}/hqdefault.jpg`,
+          }));
+          if (q.length > 0) dispatch({ type: "SET_QUEUE", payload: q });
+        }).catch(() => {});
+      }).catch(() => {});
+    }
   }, [state.currentVideo?.id]);
+
+  // Page Visibility API — resume playback when tab becomes visible
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && state.playing && state.currentVideo) {
+        // Small delay to let browser settle, then ensure playing
+        setTimeout(() => {
+          ytCmd("playVideo");
+        }, 200);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [state.playing, state.currentVideo, ytCmd]);
 
   // ── Public API ────────────────────────────────────────────────────────
   const playVideo       = useCallback((v) => dispatch({ type: "PLAY", payload: v }), []);
@@ -338,9 +367,9 @@ export function YTProvider({ children }) {
           <iframe
             ref={iframeRef}
             key={videoId}
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=1&origin=${typeof window !== "undefined" ? window.location.origin : ""}`}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=1&iv_load_policy=3&disablekb=1&origin=${typeof window !== "undefined" ? window.location.origin : ""}`}
             title="Arise YT Player"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; background-sync"
             allowFullScreen
             style={{ width: "100%", height: "100%", border: "none", display: "block" }}
           />
