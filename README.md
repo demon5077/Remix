@@ -8,7 +8,6 @@
 
 </div>
 
----
 
 ## ⚔️ Two Souls, One App
 
@@ -22,7 +21,6 @@ The default Arise experience. Crimson glows, purple hazes, and fire & smoke part
 
 Switch to the celestial. Golden dust particles float across cream and ivory. Sacred bhajans, Vedic chants, and divine classical ragas. Angelic slogans replace demonic whispers. The same app — transfigured.
 
----
 
 ## 🎵 Features
 
@@ -76,7 +74,6 @@ Switch to the celestial. Golden dust particles float across cream and ivory. Sac
 - All components use CSS custom properties (`var(--bg-card)`, `var(--text-primary)` etc.)
 - Flash-free: `data-theme` applied before first render
 
----
 
 ## 🚀 Setup
 
@@ -121,7 +118,6 @@ ARISE_FROM_EMAIL=Arise <noreply@yourdomain.com>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
----
 
 ## 🏗️ Tech Stack
 
@@ -132,7 +128,6 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - **APIs:** JioSaavn, YouTube Music (Muzo), YouTube IFrame API, RapidAPI
 - **Fonts:** Orbitron (headings), Rajdhani (body)
 
----
 
 ## 🎨 Design Philosophy
 
@@ -144,6 +139,5 @@ Arise lives at the intersection of two energies:
 
 One toggle. Two worlds.
 
----
 
 *Crafted in darkness (and light) by Sunil.*
