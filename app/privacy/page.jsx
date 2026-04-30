@@ -19,89 +19,143 @@ const SECTIONS = [
       },
       {
         sub: "1.4 Cookies",
-        text: "Arise uses strictly functional cookies to maintain session state. We do not use advertising or tracking cookies. You may clear cookies at any time through your browser settings.",
+        text: "Arise uses strictly functional cookies to maintain session state. We do not use advertising or tracking cookies.",
       },
     ],
   },
+
   {
     title: "2. How We Use Your Data",
     content: [
       {
         sub: "2.1 Personalisation",
-        text: "Your playback history and preferences power the 'Recommended for You' and mood-based playlist features. This processing occurs client-side wherever possible.",
+        text: "Your playback history and preferences power recommendation features. Processing occurs client-side wherever possible.",
       },
       {
         sub: "2.2 Service Operation",
-        text: "OAuth tokens from Google and Spotify are used exclusively to import your playlists upon your explicit request. Tokens are stored locally and are never transmitted to our servers.",
+        text: "OAuth tokens from Google and Spotify are used only when you explicitly request features such as playlist import. Tokens are stored locally and never transmitted to our servers.",
       },
       {
-        sub: "2.3 We Never Sell Your Data",
-        text: "Arise does not sell, rent, lease, or otherwise commercially exploit your personal data to any third party — ever.",
+        sub: "2.3 No Sale of Data",
+        text: "Arise does not sell, rent, or commercially exploit your personal data.",
       },
     ],
   },
+
   {
-    title: "3. Third-Party Services",
+    title: "3. Data Sharing and Disclosure",
     content: [
       {
-        sub: "3.1 JioSaavn API",
-        text: "Music metadata and streaming URLs are fetched from the JioSaavn public API (saavn.dev). Your interactions with this service are subject to JioSaavn's own Privacy Policy.",
+        sub: "3.1 No Sale of Personal Data",
+        text: "We do not sell, rent, or trade your personal information, including Google user data.",
       },
       {
-        sub: "3.2 YouTube / Google",
-        text: "YouTube video playback and Google OAuth are provided by Google LLC. Usage of these services is governed by Google's Privacy Policy and Terms of Service.",
+        sub: "3.2 No Unauthorized Sharing",
+        text: "We do not share, transfer, or disclose Google user data to external organizations except when required to provide functionality you explicitly request.",
       },
       {
-        sub: "3.3 Spotify",
-        text: "Spotify playlist import is powered by the Spotify Web API. Usage is subject to Spotify's Privacy Policy.",
+        sub: "3.3 Third-Party Processing",
+        text: "Features may rely on third-party services such as Google (YouTube) and Spotify. These services may process data independently under their own policies. We do not send Google user data beyond what is required for requested functionality.",
+      },
+      {
+        sub: "3.4 Legal Requirements",
+        text: "We may disclose information if required by law or valid legal process.",
+      },
+      {
+        sub: "3.5 Local-Only Storage",
+        text: "OAuth tokens and related data are stored locally on your device and are never transmitted to Arise servers.",
       },
     ],
   },
+
   {
-    title: "4. Data Security",
+    title: "4. Google API Services User Data Policy Compliance",
     content: [
       {
-        sub: "4.1 Encryption",
-        text: "All data in transit between your browser and third-party APIs is encrypted via HTTPS/TLS. We do not operate our own backend servers that store user data.",
+        sub: "4.1 Limited Use Compliance",
+        text: "Arise's use and transfer of information received from Google APIs complies with the Google API Services User Data Policy, including the Limited Use requirements.",
       },
       {
-        sub: "4.2 Breach Notification",
-        text: "In the unlikely event of a data breach affecting user information, we will notify affected users within 72 hours of becoming aware of the breach.",
+        sub: "4.2 Purpose Limitation",
+        text: "Google user data is used only for user-facing features such as authentication and optional playlist import.",
+      },
+      {
+        sub: "4.3 No Advertising Use",
+        text: "We do not use Google user data for advertising, marketing, or profiling purposes.",
+      },
+      {
+        sub: "4.4 No Human Access",
+        text: "We do not allow humans to read Google user data except with your consent or when required for security or legal reasons.",
+      },
+      {
+        sub: "4.5 No Unauthorized Transfer",
+        text: "We do not transfer Google user data to third parties except as necessary to provide requested functionality in compliance with Google's policies.",
       },
     ],
   },
+
   {
-    title: "5. Your Rights",
+    title: "5. Third-Party Services",
     content: [
       {
-        sub: "5.1 Access & Deletion",
-        text: "You may clear all locally stored data at any time by clearing your browser storage. OAuth sessions can be revoked directly from Google's or Spotify's account settings pages.",
+        sub: "5.1 YouTube / Google",
+        text: "Google OAuth is used for authentication and basic profile access (name, email, profile picture). This data is used only within Arise in compliance with Google's Limited Use requirements and is not stored on our servers or shared externally.",
       },
       {
-        sub: "5.2 Opt-Out",
-        text: "You may use Arise without connecting any third-party account. Features requiring OAuth (playlist import, YouTube history) will be unavailable, but core music streaming remains fully functional.",
-      },
-      {
-        sub: "5.3 Contact",
-        text: "For any privacy-related enquiries, reach out to: privacy@arise.music (placeholder — replace with actual contact before production deployment).",
+        sub: "5.2 Spotify",
+        text: "Spotify integration is used only when you request playlist import.",
       },
     ],
   },
+
   {
-    title: "6. Children's Privacy",
+    title: "6. Data Security",
+    content: [
+      {
+        sub: "6.1 Encryption",
+        text: "All data in transit is encrypted via HTTPS/TLS.",
+      },
+      {
+        sub: "6.2 Architecture",
+        text: "Arise does not operate backend servers that store user personal data.",
+      },
+    ],
+  },
+
+  {
+    title: "7. Your Rights",
+    content: [
+      {
+        sub: "7.1 Data Control",
+        text: "You can clear all stored data by clearing your browser storage.",
+      },
+      {
+        sub: "7.2 OAuth Revocation",
+        text: "You can revoke access anytime via your Google or Spotify account settings.",
+      },
+      {
+        sub: "7.3 Contact",
+        text: "For privacy inquiries, contact: privacy@arise.pp.ua",
+      },
+    ],
+  },
+
+  {
+    title: "8. Children's Privacy",
     content: [
       {
         sub: "",
-        text: "Arise is not directed at children under the age of 13. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us immediately.",
+        text: "Arise is not intended for children under 13.",
       },
     ],
   },
+
   {
-    title: "7. Changes to This Policy",
+    title: "9. Changes to This Policy",
     content: [
       {
         sub: "",
-        text: "We may update this Privacy Policy from time to time. Material changes will be communicated via an in-app notification. Continued use of Arise after changes are posted constitutes acceptance of the revised policy.",
+        text: "We may update this policy periodically. Continued use means acceptance of updates.",
       },
     ],
   },
@@ -110,52 +164,26 @@ const SECTIONS = [
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen" style={{ color: "#ccccee" }}>
-      {/* Hero */}
-      <section className="relative px-6 md:px-12 pt-16 pb-12 overflow-hidden">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)", filter: "blur(60px)" }} />
-        <p className="text-xs tracking-[0.4em] uppercase mb-3"
-          style={{ color: "#9D4EDD", fontFamily: "Orbitron, sans-serif" }}>
-          ✦ Legal ✦
-        </p>
-        <h1 className="text-4xl md:text-6xl font-black mb-4"
-          style={{
-            fontFamily: "Orbitron, sans-serif",
-            background: "linear-gradient(135deg, #9D4EDD, #FF003C)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-          }}>
+      <section className="px-6 md:px-12 pt-16 pb-12">
+        <h1 className="text-4xl md:text-6xl font-black mb-4">
           Privacy Policy
         </h1>
-        <p className="text-sm" style={{ color: "#44445a", fontFamily: "Rajdhani, sans-serif" }}>
-          Last updated: June 2025 · Effective immediately
-        </p>
-        <p className="mt-4 text-sm max-w-xl leading-relaxed" style={{ color: "#8888aa" }}>
-          Arise is committed to your privacy. This policy explains what data we handle, why, and how we protect it. We keep things honest and plain-spoken.
+
+        <p className="text-sm">
+          Last updated: April 2026 · Effective immediately
         </p>
       </section>
 
-      <div className="mx-6 md:mx-12 h-[1px]" style={{ background: "linear-gradient(to right, rgba(157,78,221,0.3), transparent)" }} />
-
-      {/* Content */}
       <section className="px-6 md:px-12 py-12 max-w-3xl space-y-10">
         {SECTIONS.map(({ title, content }) => (
           <div key={title}>
-            <h2 className="text-lg font-bold mb-5"
-              style={{ fontFamily: "Orbitron, sans-serif", color: "#e8e8f8", fontSize: "1rem" }}>
-              {title}
-            </h2>
+            <h2 className="text-lg font-bold mb-5">{title}</h2>
+
             <div className="space-y-4">
               {content.map(({ sub, text }) => (
-                <div key={sub + text}
-                  className="pl-4"
-                  style={{ borderLeft: "2px solid rgba(157,78,221,0.2)" }}>
-                  {sub && (
-                    <p className="text-xs font-bold mb-1"
-                      style={{ color: "#9D4EDD", fontFamily: "Rajdhani, sans-serif", letterSpacing: "0.06em" }}>
-                      {sub}
-                    </p>
-                  )}
-                  <p className="text-sm leading-relaxed" style={{ color: "#8888aa" }}>{text}</p>
+                <div key={sub + text}>
+                  {sub && <p className="text-xs font-bold">{sub}</p>}
+                  <p className="text-sm">{text}</p>
                 </div>
               ))}
             </div>
